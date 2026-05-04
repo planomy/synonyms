@@ -535,29 +535,6 @@
       box-shadow: none;
     }
 
-    .row-key-proxy {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      margin: 0;
-      padding: 0;
-      bottom: 0;
-      left: 0;
-      opacity: 0;
-      border: 0;
-      outline: none;
-      font-size: 16px;
-      /* iOS: avoid zoom-on-focus; keep invisible */
-      color: transparent;
-      caret-color: transparent;
-      z-index: 5;
-      pointer-events: none;
-    }
-
-    .row-key-proxy:focus {
-      outline: none;
-    }
-
     .slot.slot-active:active {
       transform: scale(0.97);
     }
@@ -907,7 +884,7 @@
   <div class="app">
     <header>
       <h1 class="logo">Synonyms</h1>
-      <p class="tagline">Tap letters or type to solve · 500 puzzles.</p>
+      <p class="tagline">Tap letters into the answer slots · 500 puzzles.</p>
     </header>
 
     <div class="hud-status-meta" aria-live="polite">
@@ -1742,26 +1719,28 @@
           const letters = shuffle(word.split(""));
           const wrap = document.createElement("div");
           wrap.className = "row-wrap";
-          wrap.tabIndex = -1;
+          wrap.tabIndex = 0;
           wrap.setAttribute("role", "group");
           wrap.setAttribute(
             "aria-label",
-            "Word " + (rowIdx + 1) + " — tap a letter then an empty slot, or tap an empty slot / row background to type."
+            "Word " +
+              (rowIdx + 1) +
+              " — tap a letter, then an empty slot. With a physical keyboard, focus this row and type A–Z."
           );
           wrap.dataset.word = word;
           wrap.dataset.row = String(rowIdx);
 
           wrap.addEventListener("click", function (ev) {
-            if (ev.target === wrap) focusRowKeyProxy(wrap);
+            if (ev.target === wrap) wrap.focus();
           });
-          /* iOS/Android only treat focus() as user-initiated when it runs in the same turn as touchstart/pointerdown; mousedown is too late. */
-          function tryOpenKeyboardFromRowGesture(ev) {
+          wrap.addEventListener("mousedown", function (ev) {
             if (roundComplete) return;
-            if (!rowPointerOpensKeyboard(ev.target)) return;
-            focusRowKeyProxy(wrap);
-          }
-          wrap.addEventListener("pointerdown", tryOpenKeyboardFromRowGesture, { passive: true });
-          wrap.addEventListener("touchstart", tryOpenKeyboardFromRowGesture, { passive: true });
+            const el = /** @type {HTMLElement} */ (ev.target);
+            if (el.closest(".hint-btn")) return;
+            if (el.closest(".letter")) return;
+            if (el.closest(".slot.slot-active.filled")) return;
+            wrap.focus({ preventScroll: true });
+          });
           wrap.addEventListener("focusin", function () {
             if (roundComplete) return;
             wrap.classList.add("row-active");
@@ -1835,38 +1814,6 @@
           wrap.appendChild(rowHead);
           wrap.appendChild(inner);
 
-          const keyProxy = document.createElement("input");
-          keyProxy.type = "text";
-          keyProxy.className = "row-key-proxy";
-          keyProxy.setAttribute("inputmode", "text");
-          keyProxy.setAttribute("enterkeyhint", "done");
-          keyProxy.setAttribute("autocomplete", "off");
-          keyProxy.setAttribute("autocorrect", "off");
-          keyProxy.setAttribute("autocapitalize", "characters");
-          keyProxy.setAttribute("spellcheck", "false");
-          keyProxy.setAttribute(
-            "aria-label",
-            "Type letters for word " + (rowIdx + 1)
-          );
-          keyProxy.tabIndex = -1;
-          keyProxy.addEventListener("input", function () {
-            if (roundComplete) return;
-            var raw = keyProxy.value || "";
-            keyProxy.value = "";
-            var lettersOnly = raw.replace(/[^a-zA-Z]/g, "");
-            if (!lettersOnly.length) return;
-            var key = lettersOnly.charAt(lettersOnly.length - 1).toUpperCase();
-            if (key < "A" || key > "Z") return;
-            var trayLetters = wrap.querySelectorAll(".letter:not(.used)");
-            for (var ki = 0; ki < trayLetters.length; ki++) {
-              if (trayLetters[ki].textContent === key) {
-                placeLetterFromTray(wrap, trayLetters[ki], null);
-                return;
-              }
-            }
-          });
-          wrap.appendChild(keyProxy);
-
           board.appendChild(wrap);
         });
 
@@ -1921,25 +1868,6 @@
 
       function wrapFor(el) {
         return el.closest(".row-wrap");
-      }
-
-      /** Real `<input>` so iOS/Android show the software keyboard; `div[tabindex]` does not. */
-      function focusRowKeyProxy(wrap) {
-        if (!wrap) return;
-        const proxy = wrap.querySelector(".row-key-proxy");
-        if (proxy) {
-          proxy.focus({ preventScroll: true });
-        }
-      }
-
-      /** Tap targets that should summon the keyboard (mirrors row mousedown rules). */
-      function rowPointerOpensKeyboard(target) {
-        if (!target || !/** @type {*} */ (target).closest) return false;
-        const el = /** @type {HTMLElement} */ (target);
-        if (el.closest(".hint-btn")) return false;
-        if (el.closest(".letter")) return false;
-        if (el.closest(".slot.slot-active.filled")) return false;
-        return true;
       }
 
       nextRoundBtn.addEventListener("click", function () {
