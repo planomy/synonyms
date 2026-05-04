@@ -484,6 +484,12 @@
       margin-right: auto;
     }
 
+    .row-wrap.solved .slots {
+      gap: 0;
+      border-radius: clamp(8px, 1.1vh, 14px);
+      overflow: hidden;
+    }
+
     .slot {
       flex: 0 0 auto;
       width: var(--rack-tile);
@@ -538,10 +544,18 @@
 
     .row-wrap.solved .slot.slot-active.filled {
       border: none;
+      border-radius: 0;
       color: #fff;
       background: #2f8f4a;
-      box-shadow: none;
       animation: letterReveal 0.4s ease;
+    }
+
+    .row-wrap.solved .slots .slot.slot-active.filled:not(:last-child) {
+      box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.22);
+    }
+
+    .row-wrap.solved .slots .slot.slot-active.filled:last-child {
+      box-shadow: none;
     }
 
     .row-wrap.solved .slot.slot-active.filled:focus-visible {
@@ -871,7 +885,7 @@
   <div class="app">
     <header>
       <h1 class="logo">Synonyms</h1>
-      <p class="tagline">Tap letters into the slots · Hint next to Moves when a row is focused · 500 puzzles.</p>
+      <p class="tagline">Tap a letter, then a slot — tap a filled slot to swap (one move) · Hint next to Moves when a row is focused · 500 puzzles.</p>
     </header>
 
     <div class="hud-status-meta" aria-live="polite">
@@ -1405,6 +1419,38 @@
         return document.querySelectorAll(".row-wrap").length === document.querySelectorAll(".row-wrap.solved").length;
       }
 
+      function syncRowInnerWidth(rowWrap) {
+        const inner = rowWrap.querySelector(".row-inner");
+        const sr = inner && inner.querySelector(".slots");
+        if (inner && sr) {
+          inner.style.width = Math.ceil(sr.getBoundingClientRect().width) + "px";
+        }
+      }
+
+      function appendReturnedLetterToTray(rowWrap, ch) {
+        const tray = rowWrap.querySelector(".letter-tray");
+        if (!tray) return;
+        const poolBtn = document.createElement("button");
+        poolBtn.type = "button";
+        poolBtn.className = "letter";
+        poolBtn.textContent = ch;
+        const rid = "r" + rowWrap.dataset.row + "-return-" + Math.random().toString(36).slice(2, 8);
+        poolBtn.dataset.id = rid;
+        poolBtn.dataset.char = ch;
+        poolBtn.dataset.row = rowWrap.dataset.row || "";
+        poolBtn.setAttribute("aria-label", "Letter " + ch);
+        tray.appendChild(poolBtn);
+      }
+
+      function emptySlot(slotEl, rowWrap) {
+        slotEl.textContent = "";
+        slotEl.classList.remove("filled", "slot-from-hint");
+        slotEl.classList.add("empty");
+        delete slotEl.dataset.fromHint;
+        slotEl.setAttribute("aria-label", "Slot " + (Number(slotEl.dataset.index) + 1) + " empty");
+        rowWrap.classList.remove("solved");
+      }
+
       function checkRow(rowEl, word) {
         const slots = rowEl.querySelectorAll(".slot.slot-active");
         let filled = "";
@@ -1415,6 +1461,7 @@
         if (filled !== word) return false;
         if (!rowEl.classList.contains("solved")) {
           rowEl.classList.add("solved");
+          syncRowInnerWidth(rowEl);
         }
         return true;
       }
@@ -1485,26 +1532,52 @@
       function returnLetterFromSlot(rowWrap, slotEl) {
         if (!slotEl.classList.contains("filled")) return;
         const ch = slotEl.textContent;
-        const tray = rowWrap.querySelector(".letter-tray");
-        const poolBtn = document.createElement("button");
-        poolBtn.type = "button";
-        poolBtn.className = "letter";
-        poolBtn.textContent = ch;
-        const rid = "r" + rowWrap.dataset.row + "-return-" + Math.random().toString(36).slice(2, 8);
-        poolBtn.dataset.id = rid;
-        poolBtn.dataset.char = ch;
-        poolBtn.dataset.row = rowWrap.dataset.row || "";
-        poolBtn.setAttribute("aria-label", "Letter " + ch);
-        tray.appendChild(poolBtn);
-        slotEl.textContent = "";
-        slotEl.classList.remove("filled", "slot-from-hint");
-        slotEl.classList.add("empty");
-        delete slotEl.dataset.fromHint;
-        slotEl.setAttribute("aria-label", "Slot " + (Number(slotEl.dataset.index) + 1) + " empty");
-        rowWrap.classList.remove("solved");
+        appendReturnedLetterToTray(rowWrap, ch);
+        emptySlot(slotEl, rowWrap);
         bumpMoves();
         clearSelection();
         syncHudHintButton();
+        syncRowInnerWidth(rowWrap);
+      }
+
+      /**
+       * Replace the letter in a filled slot with a tray letter (one move). Pick a letter, then tap the slot to swap.
+       */
+      function swapTrayLetterIntoFilledSlot(rowWrap, letterBtn, slotEl) {
+        const word = rowWrap.dataset.word || "";
+        if (roundComplete || rowWrap.classList.contains("solved")) return;
+        if (!slotEl.classList.contains("filled")) return;
+        if (letterBtn.classList.contains("used")) return;
+        if (String(letterBtn.dataset.row) !== String(rowWrap.dataset.row)) return;
+
+        const oldCh = slotEl.textContent.trim();
+        const newCh = letterBtn.textContent.trim();
+        if (oldCh === newCh) {
+          letterBtn.classList.remove("selected");
+          selectedLetterId = null;
+          return;
+        }
+
+        appendReturnedLetterToTray(rowWrap, oldCh);
+        emptySlot(slotEl, rowWrap);
+
+        letterBtn.classList.add("used");
+        letterBtn.classList.remove("selected");
+        selectedLetterId = null;
+        slotEl.textContent = letterBtn.textContent;
+        slotEl.classList.add("filled");
+        slotEl.classList.remove("empty");
+        slotEl.setAttribute(
+          "aria-label",
+          "Slot " + (Number(slotEl.dataset.index) + 1) + ": " + letterBtn.textContent
+        );
+
+        bumpMoves();
+        clearSelection();
+        checkRow(rowWrap, word);
+        syncHudHintButton();
+        tryFinishRound(roundCtx.words, roundCtx.theme);
+        syncRowInnerWidth(rowWrap);
       }
 
       /**
@@ -1681,6 +1754,23 @@
           const key = e.key.toUpperCase();
           if (key < "A" || key > "Z") return;
           e.preventDefault();
+          const active = document.activeElement;
+          if (
+            active &&
+            active.classList.contains("slot") &&
+            active.classList.contains("slot-active") &&
+            active.classList.contains("filled") &&
+            wrap.contains(active)
+          ) {
+            const lettersSwap = wrap.querySelectorAll(".letter:not(.used)");
+            for (let k = 0; k < lettersSwap.length; k++) {
+              if (lettersSwap[k].textContent === key) {
+                swapTrayLetterIntoFilledSlot(wrap, lettersSwap[k], /** @type {HTMLElement} */ (active));
+                return;
+              }
+            }
+            return;
+          }
           const letters = wrap.querySelectorAll(".letter:not(.used)");
           for (let k = 0; k < letters.length; k++) {
             if (letters[k].textContent === key) {
@@ -1775,7 +1865,7 @@
             "aria-label",
             "Word " +
               (rowIdx + 1) +
-              " — tap a letter, then an empty slot. Hint is next to Moves when this row is focused. Keyboard: type A–Z."
+              " — tap a letter, then a slot; tap a filled slot to swap. Hint is next to Moves when this row is focused. Keyboard: type A–Z; focus a filled slot to swap."
           );
           wrap.dataset.word = word;
           wrap.dataset.row = String(rowIdx);
@@ -1859,51 +1949,58 @@
 
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            board.querySelectorAll(".row-inner").forEach(function (inner) {
-              const sr = inner.querySelector(".slots");
-              if (sr) {
-                inner.style.width = Math.ceil(sr.getBoundingClientRect().width) + "px";
-              }
+            board.querySelectorAll(".row-wrap").forEach(function (w) {
+              syncRowInnerWidth(w);
             });
             syncHudHintButton();
           });
         });
 
-        board.onclick = function (e) {
-          if (roundComplete) return;
-          const t = /** @type {HTMLElement} */ (e.target);
-          const letterEl = t.closest(".letter");
-          const slotEl = t.closest(".slot.slot-active");
+        board.onclick = boardClickHandler;
+      }
 
-          if (letterEl && !letterEl.classList.contains("used")) {
-            const same = letterEl.classList.contains("selected");
-            clearSelection();
-            if (!same) {
-              letterEl.classList.add("selected");
-              selectedLetterId = letterEl.dataset.id || null;
+      function boardClickHandler(e) {
+        if (roundComplete) return;
+        const t = /** @type {HTMLElement} */ (e.target);
+        const letterEl = t.closest(".letter");
+        const slotEl = t.closest(".slot.slot-active");
+
+        if (letterEl && !letterEl.classList.contains("used")) {
+          const same = letterEl.classList.contains("selected");
+          clearSelection();
+          if (!same) {
+            letterEl.classList.add("selected");
+            selectedLetterId = letterEl.dataset.id || null;
+          }
+          return;
+        }
+
+        if (slotEl && wrapFor(slotEl)) {
+          const rowWrap = wrapFor(slotEl);
+
+          if (slotEl.classList.contains("filled")) {
+            const selected = document.querySelector(
+              '.letter.selected[data-row="' + rowWrap.dataset.row + '"]'
+            );
+            if (selected && !selected.classList.contains("used")) {
+              swapTrayLetterIntoFilledSlot(rowWrap, selected, slotEl);
+              return;
             }
+            returnLetterFromSlot(rowWrap, slotEl);
             return;
           }
 
-          if (slotEl && wrapFor(slotEl)) {
-            const rowWrap = wrapFor(slotEl);
-            const word = rowWrap.dataset.word || "";
-
-            if (slotEl.classList.contains("filled")) {
-              returnLetterFromSlot(rowWrap, slotEl);
+          if (slotEl.classList.contains("empty") && selectedLetterId) {
+            const selected = document.querySelector(
+              '.letter.selected[data-row="' + rowWrap.dataset.row + '"]'
+            );
+            if (!selected) {
+              clearSelection();
               return;
             }
-
-            if (slotEl.classList.contains("empty") && selectedLetterId) {
-              const selected = document.querySelector('.letter.selected[data-row="' + rowWrap.dataset.row + '"]');
-              if (!selected) {
-                clearSelection();
-                return;
-              }
-              placeLetterFromTray(rowWrap, selected, slotEl);
-            }
+            placeLetterFromTray(rowWrap, selected, slotEl);
           }
-        };
+        }
       }
 
       function wrapFor(el) {
