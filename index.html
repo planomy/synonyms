@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#0f1419" />
   <title>Synonyms</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -40,6 +40,7 @@
       --header-max: min(28rem, calc(100vw - 32px));
       /* Match letter tiles to slot cells so one row of letters never needs a narrower tray */
       --rack-tile: clamp(28px, 3.8vw, 36px);
+      --row-gap-compact: clamp(4px, 1vh, 8px);
     }
 
     * {
@@ -49,12 +50,18 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    html, body {
+    html {
       height: 100%;
+      height: -webkit-fill-available;
+    }
+
+    html, body {
       overflow: hidden;
     }
 
     body {
+      min-height: 100%;
+      min-height: -webkit-fill-available;
       font-family: var(--font-ui);
       background: var(--bg-deep);
       color: var(--text);
@@ -65,7 +72,9 @@
     }
 
     .app {
+      height: 100svh;
       height: 100dvh;
+      max-height: 100svh;
       max-height: 100dvh;
       width: 100%;
       max-width: min(1120px, 100%);
@@ -84,7 +93,7 @@
       text-align: center;
       gap: 4px;
       flex-shrink: 0;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       width: 100%;
       max-width: var(--header-max);
       margin-left: auto;
@@ -273,16 +282,21 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: clamp(4px, 0.8vh, 8px);
-      overflow: hidden;
+      gap: var(--row-gap-compact);
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-bottom: 2px;
     }
 
     .row-wrap {
+      position: relative;
       background: linear-gradient(180deg, #141a22 0%, #0f1318 100%);
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: clamp(10px, 1.4vh, 16px);
       padding: clamp(6px, 1.1vh, 10px) clamp(10px, 1.4vw, 14px);
-      flex: 1;
+      flex: 0 1 auto;
       min-height: 0;
       width: fit-content;
       max-width: 100%;
@@ -358,7 +372,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: clamp(8px, 1.2vh, 12px);
+      gap: clamp(6px, 1vh, 10px);
       width: auto;
       max-width: 100%;
       min-height: 0;
@@ -508,13 +522,38 @@
         0 0 0 1px rgba(94, 228, 212, 0.25);
     }
 
+    /* Keep grid width for centering; hide “ghost” tile chrome on phones */
     .slot.slot-pad {
       pointer-events: none;
       cursor: default;
-      opacity: 0.42;
-      background: linear-gradient(180deg, #232b36 0%, #171d26 100%);
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      visibility: hidden;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .row-key-proxy {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: 0;
+      padding: 0;
+      bottom: 0;
+      left: 0;
+      opacity: 0;
+      border: 0;
+      outline: none;
+      font-size: 16px;
+      /* iOS: avoid zoom-on-focus; keep invisible */
+      color: transparent;
+      caret-color: transparent;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .row-key-proxy:focus {
+      outline: none;
     }
 
     .slot.slot-active:active {
@@ -793,15 +832,65 @@
       display: none !important;
     }
 
+    @media (max-width: 540px) {
+      :root {
+        --rack-tile: clamp(22px, calc((100vw - 56px) / 15.5), 30px);
+        --row-gap-compact: 3px;
+      }
+
+      header {
+        margin-bottom: 4px;
+        gap: 2px;
+      }
+
+      .logo {
+        font-size: clamp(1.15rem, 4.2vw, 1.55rem);
+      }
+
+      .tagline {
+        font-size: 0.65rem;
+        line-height: 1.25;
+      }
+
+      .hud-status-meta {
+        margin-bottom: 4px;
+        padding: 0 6px;
+      }
+
+      .hud {
+        padding: 6px 10px;
+        margin-bottom: 6px;
+        gap: 6px;
+      }
+
+      .row-wrap {
+        padding: 4px 6px;
+        border-radius: 10px;
+      }
+
+      .row-head {
+        margin-bottom: 2px;
+      }
+
+      .hint-btn {
+        font-size: 0.62rem;
+        padding: 4px 8px;
+      }
+
+      .row-inner {
+        gap: 4px;
+      }
+    }
+
     @media (max-height: 640px) {
       .row-wrap {
         padding: 3px 8px;
       }
       .letter {
-        height: clamp(28px, 4.8vh, 36px);
+        height: clamp(26px, 4.2vh, 34px);
       }
       .slot {
-        height: clamp(32px, 5vh, 40px);
+        height: clamp(26px, 4.2vh, 34px);
       }
       .hud {
         padding: 6px 10px;
@@ -816,8 +905,7 @@
   <div class="app">
     <header>
       <h1 class="logo">Synonyms</h1>
-      <p class="tagline">Click and type, or tap to solve.</p>
-      <p class="tagline">Solve all 500 puzzles.</p>
+      <p class="tagline">Tap letters or type to solve · 500 puzzles.</p>
     </header>
 
     <div class="hud-status-meta" aria-live="polite">
@@ -1652,22 +1740,22 @@
           const letters = shuffle(word.split(""));
           const wrap = document.createElement("div");
           wrap.className = "row-wrap";
-          wrap.tabIndex = 0;
+          wrap.tabIndex = -1;
           wrap.setAttribute("role", "group");
           wrap.setAttribute(
             "aria-label",
-            "Word " + (rowIdx + 1) + " — click this frame to focus, then type letters A–Z, or use tiles below."
+            "Word " + (rowIdx + 1) + " — tap letters or the row, then type A–Z, or place tiles with tap."
           );
           wrap.dataset.word = word;
           wrap.dataset.row = String(rowIdx);
 
           wrap.addEventListener("click", function (ev) {
-            if (ev.target === wrap) wrap.focus();
+            if (ev.target === wrap) focusRowKeyProxy(wrap);
           });
           wrap.addEventListener("mousedown", function (ev) {
             if (roundComplete) return;
-            if (!/** @type {HTMLElement} */ (ev.target).closest("button")) {
-              wrap.focus({ preventScroll: true });
+            if (!/** @type {HTMLElement} */ (ev.target).closest(".hint-btn")) {
+              focusRowKeyProxy(wrap);
             }
           });
           wrap.addEventListener("focusin", function () {
@@ -1742,6 +1830,39 @@
           inner.appendChild(tray);
           wrap.appendChild(rowHead);
           wrap.appendChild(inner);
+
+          const keyProxy = document.createElement("input");
+          keyProxy.type = "text";
+          keyProxy.className = "row-key-proxy";
+          keyProxy.setAttribute("inputmode", "text");
+          keyProxy.setAttribute("enterkeyhint", "done");
+          keyProxy.setAttribute("autocomplete", "off");
+          keyProxy.setAttribute("autocorrect", "off");
+          keyProxy.setAttribute("autocapitalize", "characters");
+          keyProxy.setAttribute("spellcheck", "false");
+          keyProxy.setAttribute(
+            "aria-label",
+            "Type letters for word " + (rowIdx + 1)
+          );
+          keyProxy.tabIndex = -1;
+          keyProxy.addEventListener("input", function () {
+            if (roundComplete) return;
+            var raw = keyProxy.value || "";
+            keyProxy.value = "";
+            var lettersOnly = raw.replace(/[^a-zA-Z]/g, "");
+            if (!lettersOnly.length) return;
+            var key = lettersOnly.charAt(lettersOnly.length - 1).toUpperCase();
+            if (key < "A" || key > "Z") return;
+            var trayLetters = wrap.querySelectorAll(".letter:not(.used)");
+            for (var ki = 0; ki < trayLetters.length; ki++) {
+              if (trayLetters[ki].textContent === key) {
+                placeLetterFromTray(wrap, trayLetters[ki], null);
+                return;
+              }
+            }
+          });
+          wrap.appendChild(keyProxy);
+
           board.appendChild(wrap);
         });
 
@@ -1770,6 +1891,8 @@
               letterEl.classList.add("selected");
               selectedLetterId = letterEl.dataset.id || null;
             }
+            const lw = letterEl.closest(".row-wrap");
+            if (lw) focusRowKeyProxy(lw);
             return;
           }
 
@@ -1796,6 +1919,15 @@
 
       function wrapFor(el) {
         return el.closest(".row-wrap");
+      }
+
+      /** Real `<input>` so iOS/Android show the software keyboard; `div[tabindex]` does not. */
+      function focusRowKeyProxy(wrap) {
+        if (!wrap) return;
+        const proxy = wrap.querySelector(".row-key-proxy");
+        if (proxy) {
+          proxy.focus({ preventScroll: true });
+        }
       }
 
       nextRoundBtn.addEventListener("click", function () {
