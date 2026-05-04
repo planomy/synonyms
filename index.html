@@ -1744,7 +1744,7 @@
           wrap.setAttribute("role", "group");
           wrap.setAttribute(
             "aria-label",
-            "Word " + (rowIdx + 1) + " — tap letters or the row, then type A–Z, or place tiles with tap."
+            "Word " + (rowIdx + 1) + " — tap a letter then an empty slot, or tap an empty slot / row background to type."
           );
           wrap.dataset.word = word;
           wrap.dataset.row = String(rowIdx);
@@ -1754,9 +1754,12 @@
           });
           wrap.addEventListener("mousedown", function (ev) {
             if (roundComplete) return;
-            if (!/** @type {HTMLElement} */ (ev.target).closest(".hint-btn")) {
-              focusRowKeyProxy(wrap);
-            }
+            const el = /** @type {HTMLElement} */ (ev.target);
+            if (el.closest(".hint-btn")) return;
+            /* Letter tiles: select only; avoid popping keyboard until user taps an empty slot or chrome. */
+            if (el.closest(".letter")) return;
+            if (el.closest(".slot.slot-active.filled")) return;
+            focusRowKeyProxy(wrap);
           });
           wrap.addEventListener("focusin", function () {
             if (roundComplete) return;
@@ -1891,8 +1894,6 @@
               letterEl.classList.add("selected");
               selectedLetterId = letterEl.dataset.id || null;
             }
-            const lw = letterEl.closest(".row-wrap");
-            if (lw) focusRowKeyProxy(lw);
             return;
           }
 
