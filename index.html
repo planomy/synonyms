@@ -53,29 +53,30 @@
     html {
       height: 100%;
       height: -webkit-fill-available;
-    }
-
-    html, body {
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     body {
       min-height: 100%;
       min-height: -webkit-fill-available;
+      /* Slight overflow so the document can scroll: mobile browsers hide chrome when the page scrolls. */
+      min-height: calc(100dvh + 2px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       font-family: var(--font-ui);
       background: var(--bg-deep);
       color: var(--text);
-      overflow: hidden;
       background-image:
         radial-gradient(ellipse 100% 70% at 50% -20%, rgba(255, 255, 255, 0.04), transparent),
         radial-gradient(ellipse 70% 50% at 100% 0%, rgba(94, 228, 212, 0.03), transparent);
     }
 
     .app {
-      height: 100svh;
-      height: 100dvh;
-      max-height: 100svh;
-      max-height: 100dvh;
+      min-height: 100svh;
+      min-height: 100dvh;
       width: 100%;
       max-width: min(1120px, 100%);
       margin: 0 auto;
@@ -83,7 +84,8 @@
       flex-direction: column;
       align-items: stretch;
       padding: max(6px, env(safe-area-inset-top)) clamp(10px, 2vw, 20px) max(6px, env(safe-area-inset-bottom));
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: visible;
     }
 
     header {
@@ -1752,15 +1754,14 @@
           wrap.addEventListener("click", function (ev) {
             if (ev.target === wrap) focusRowKeyProxy(wrap);
           });
-          wrap.addEventListener("mousedown", function (ev) {
+          /* iOS/Android only treat focus() as user-initiated when it runs in the same turn as touchstart/pointerdown; mousedown is too late. */
+          function tryOpenKeyboardFromRowGesture(ev) {
             if (roundComplete) return;
-            const el = /** @type {HTMLElement} */ (ev.target);
-            if (el.closest(".hint-btn")) return;
-            /* Letter tiles: select only; avoid popping keyboard until user taps an empty slot or chrome. */
-            if (el.closest(".letter")) return;
-            if (el.closest(".slot.slot-active.filled")) return;
+            if (!rowPointerOpensKeyboard(ev.target)) return;
             focusRowKeyProxy(wrap);
-          });
+          }
+          wrap.addEventListener("pointerdown", tryOpenKeyboardFromRowGesture, { passive: true });
+          wrap.addEventListener("touchstart", tryOpenKeyboardFromRowGesture, { passive: true });
           wrap.addEventListener("focusin", function () {
             if (roundComplete) return;
             wrap.classList.add("row-active");
@@ -1929,6 +1930,16 @@
         if (proxy) {
           proxy.focus({ preventScroll: true });
         }
+      }
+
+      /** Tap targets that should summon the keyboard (mirrors row mousedown rules). */
+      function rowPointerOpensKeyboard(target) {
+        if (!target || !/** @type {*} */ (target).closest) return false;
+        const el = /** @type {HTMLElement} */ (target);
+        if (el.closest(".hint-btn")) return false;
+        if (el.closest(".letter")) return false;
+        if (el.closest(".slot.slot-active.filled")) return false;
+        return true;
       }
 
       nextRoundBtn.addEventListener("click", function () {
