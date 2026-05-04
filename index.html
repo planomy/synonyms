@@ -266,6 +266,51 @@
       color: var(--gold);
     }
 
+    .hud-block-moves {
+      flex: 1 1 0;
+      min-width: 0;
+      align-self: stretch;
+    }
+
+    .hud-moves-hint-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .hud-moves-hint-row .hud-hint-btn {
+      margin-left: auto;
+    }
+
+    .hud-hint-btn {
+      font-family: var(--font-ui);
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(244, 208, 111, 0.45);
+      background: rgba(244, 208, 111, 0.12);
+      color: var(--gold);
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .hud-hint-btn:hover:not(:disabled) {
+      background: rgba(244, 208, 111, 0.22);
+    }
+
+    .hud-hint-btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
     .hints-hud {
       flex: 1;
       text-align: center;
@@ -312,45 +357,13 @@
         box-shadow 0.22s ease;
     }
 
-    .row-wrap.row-active:not(.solved) {
+    .row-wrap.row-active:not(.solved),
+    .row-wrap:focus-within:not(.solved) {
       background: linear-gradient(180deg, #1a2532 0%, #121a24 100%);
-      border-color: rgba(94, 228, 212, 0.28);
+      border: 2px solid rgba(94, 228, 212, 0.42);
       box-shadow:
-        0 0 0 1px rgba(94, 228, 212, 0.18),
-        0 6px 28px rgba(94, 228, 212, 0.1);
-    }
-
-    .row-head {
-      display: flex;
-      justify-content: flex-end;
-      width: 100%;
-      margin-bottom: 4px;
-      flex-shrink: 0;
-    }
-
-    .hint-btn {
-      font-family: var(--font-ui);
-      font-size: 0.68rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 5px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(244, 208, 111, 0.35);
-      background: rgba(244, 208, 111, 0.1);
-      color: var(--gold);
-      cursor: pointer;
-      touch-action: manipulation;
-      transition: background 0.15s ease, border-color 0.15s ease;
-    }
-
-    .hint-btn:hover:not(:disabled) {
-      background: rgba(244, 208, 111, 0.18);
-    }
-
-    .hint-btn:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
+        0 0 0 1px rgba(94, 228, 212, 0.15),
+        0 6px 28px rgba(94, 228, 212, 0.12);
     }
 
     .slot.slot-from-hint.filled {
@@ -838,13 +851,9 @@
         border-radius: 10px;
       }
 
-      .row-head {
-        margin-bottom: 2px;
-      }
-
-      .hint-btn {
+      .hud-hint-btn {
         font-size: 0.62rem;
-        padding: 4px 8px;
+        padding: 4px 10px;
       }
 
       .row-inner {
@@ -872,7 +881,7 @@
   <div class="app">
     <header>
       <h1 class="logo">Synonyms</h1>
-      <p class="tagline">Tap letters into the answer slots · 500 puzzles.</p>
+      <p class="tagline">Tap letters into the slots · Hint next to Moves when a row is focused · 500 puzzles.</p>
     </header>
 
     <div class="hud-status-meta" aria-live="polite">
@@ -882,9 +891,20 @@
     </div>
 
     <div class="hud" role="status" aria-live="polite">
-      <div class="hud-block">
+      <div class="hud-block hud-block-moves">
         <span class="hud-label">Moves</span>
-        <span class="hud-value moves" id="moveCount">0</span>
+        <div class="hud-moves-hint-row">
+          <span class="hud-value moves" id="moveCount">0</span>
+          <button
+            type="button"
+            class="hud-hint-btn"
+            id="hudHintBtn"
+            disabled
+            aria-label="Reveal next letter in the focused row"
+          >
+            Hint
+          </button>
+        </div>
       </div>
       <div class="hud-block hints-hud">
         <span class="hud-label">Hints</span>
@@ -1134,6 +1154,8 @@
       let lastRoundPrevLifetime = 0;
       /** Hints used across the five puzzles of the current set (resets each new set). */
       let hintsThisSet = 0;
+      /** Row chosen for HUD Hint — survives moving focus to the Hint button (focus-within alone does not). */
+      let hintTargetRow = null;
 
       const PLAY_URL = "https://planomy.github.io/synonyms";
 
@@ -1167,6 +1189,7 @@
       const levelIndicatorEl = document.getElementById("levelIndicator");
       const dailyProgressEl = document.getElementById("dailyProgress");
       const hintsHudEl = document.getElementById("hintsHud");
+      const hudHintBtn = document.getElementById("hudHintBtn");
       const themeRevealEl = document.getElementById("themeReveal");
       const winOverlay = document.getElementById("winOverlay");
       const finalScoreEl = document.getElementById("finalScore");
@@ -1409,6 +1432,7 @@
       function tryFinishRound(words, theme) {
         if (roundComplete || !allRowsSolved()) return;
         roundComplete = true;
+        syncHudHintButton();
         elapsedAtFinishSec = (performance.now() - roundStartMs) / 1000;
         burstConfetti();
         const hintPen = totalHintPenalty();
@@ -1490,7 +1514,7 @@
         rowWrap.classList.remove("solved");
         bumpMoves();
         clearSelection();
-        syncHintButtons();
+        syncHudHintButton();
       }
 
       /**
@@ -1517,7 +1541,7 @@
         );
         bumpMoves();
         checkRow(rowWrap, word);
-        syncHintButtons();
+        syncHudHintButton();
         tryFinishRound(roundCtx.words, roundCtx.theme);
       }
 
@@ -1549,14 +1573,33 @@
         return false;
       }
 
-      function syncHintButtons() {
-        document.querySelectorAll(".row-wrap").forEach(function (rw) {
-          const btn = rw.querySelector(".hint-btn");
-          if (!btn) return;
-          const ok = canApplyHint(rw);
-          btn.disabled = !ok;
-          btn.textContent = "Hint";
-        });
+      function getHintTargetRow() {
+        if (
+          hintTargetRow &&
+          board.contains(hintTargetRow) &&
+          !hintTargetRow.classList.contains("solved")
+        ) {
+          return hintTargetRow;
+        }
+        const byFocus = board.querySelector(".row-wrap:focus-within");
+        if (byFocus && !byFocus.classList.contains("solved")) return byFocus;
+        return null;
+      }
+
+      function syncHudHintButton() {
+        if (!hudHintBtn) return;
+        const wrap = getHintTargetRow();
+        const ok = !!wrap && canApplyHint(wrap);
+        hudHintBtn.disabled = roundComplete || !ok;
+        if (roundComplete) {
+          hudHintBtn.removeAttribute("title");
+        } else         if (!wrap) {
+          hudHintBtn.setAttribute("title", "Tap inside a word row first, then press Hint");
+        } else if (!ok) {
+          hudHintBtn.setAttribute("title", "No hint available for this row");
+        } else {
+          hudHintBtn.setAttribute("title", "Reveal next letter in this row (reduces score)");
+        }
       }
 
       function applyHint(rowWrap) {
@@ -1599,9 +1642,34 @@
         targetSlot.dataset.fromHint = "1";
         targetSlot.setAttribute("aria-label", "Slot " + (idx + 1) + ": " + need + " (hint)");
         checkRow(rowWrap, word);
-        syncHintButtons();
+        syncHudHintButton();
         tryFinishRound(roundCtx.words, roundCtx.theme);
       }
+
+      if (hudHintBtn) {
+        hudHintBtn.addEventListener("mousedown", function () {
+          /* Keep hint row sticky — sync runs before click so disable state stays correct. */
+          syncHudHintButton();
+        });
+        hudHintBtn.addEventListener("click", function () {
+          const w = getHintTargetRow();
+          if (w) applyHint(w);
+        });
+      }
+      board.addEventListener(
+        "focusin",
+        function () {
+          syncHudHintButton();
+        },
+        true
+      );
+      board.addEventListener(
+        "focusout",
+        function () {
+          requestAnimationFrame(syncHudHintButton);
+        },
+        true
+      );
 
       document.addEventListener(
         "keydown",
@@ -1636,6 +1704,8 @@
 
       function showCollectionComplete() {
         roundComplete = true;
+        hintTargetRow = null;
+        syncHudHintButton();
         board.innerHTML =
           "<div class=\"daily-complete\"><h3>Collection complete</h3><p>You solved all <strong>" +
           endlessDeck.length +
@@ -1676,6 +1746,7 @@
           board.innerHTML =
             "<p style=\"padding:1rem;text-align:center\">No puzzle rounds loaded.</p>";
           board.onclick = null;
+          syncHudHintButton();
           return;
         }
 
@@ -1700,6 +1771,7 @@
         const ts = totalSetsFromDeck(endlessDeck);
         dailyProgressEl.textContent =
           "Set " + (ts ? Math.floor(roundIndex / 5) + 1 : 0) + " / " + (ts || 0);
+        hintTargetRow = null;
         board.innerHTML = "";
         beginRoundTiming();
 
@@ -1713,7 +1785,7 @@
             "aria-label",
             "Word " +
               (rowIdx + 1) +
-              " — tap a letter, then an empty slot. With a physical keyboard, focus this row and type A–Z."
+              " — tap a letter, then an empty slot. Hint is next to Moves when this row is focused. Keyboard: type A–Z."
           );
           wrap.dataset.word = word;
           wrap.dataset.row = String(rowIdx);
@@ -1724,17 +1796,28 @@
           wrap.addEventListener("mousedown", function (ev) {
             if (roundComplete) return;
             const el = /** @type {HTMLElement} */ (ev.target);
-            if (el.closest(".hint-btn")) return;
             if (el.closest(".letter")) return;
             if (el.closest(".slot.slot-active.filled")) return;
             wrap.focus({ preventScroll: true });
           });
+          wrap.addEventListener("pointerdown", function () {
+            if (roundComplete || wrap.classList.contains("solved")) return;
+            hintTargetRow = wrap;
+          }, true);
           wrap.addEventListener("focusin", function () {
             if (roundComplete) return;
             wrap.classList.add("row-active");
+            hintTargetRow = wrap;
           });
           wrap.addEventListener("focusout", function (ev) {
             const next = /** @type {FocusEvent} */ (ev).relatedTarget;
+            if (
+              next &&
+              hudHintBtn &&
+              (next === hudHintBtn || hudHintBtn.contains(/** @type {Node} */ (next)))
+            ) {
+              return;
+            }
             if (!next || !wrap.contains(next)) {
               wrap.classList.remove("row-active");
             }
@@ -1775,23 +1858,10 @@
             slotsRow.appendChild(slot);
           }
 
-          const rowHead = document.createElement("div");
-          rowHead.className = "row-head";
-          const hintBtn = document.createElement("button");
-          hintBtn.type = "button";
-          hintBtn.className = "hint-btn";
-          hintBtn.setAttribute("aria-label", "Reveal the next letter (reduces final score)");
-          hintBtn.addEventListener("click", function (ev) {
-            ev.stopPropagation();
-            applyHint(wrap);
-          });
-          rowHead.appendChild(hintBtn);
-
           const inner = document.createElement("div");
           inner.className = "row-inner";
           inner.appendChild(slotsRow);
           inner.appendChild(tray);
-          wrap.appendChild(rowHead);
           wrap.appendChild(inner);
 
           board.appendChild(wrap);
@@ -1805,7 +1875,7 @@
                 inner.style.width = Math.ceil(sr.getBoundingClientRect().width) + "px";
               }
             });
-            syncHintButtons();
+            syncHudHintButton();
           });
         });
 
