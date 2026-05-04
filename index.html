@@ -40,7 +40,7 @@
       --header-max: min(28rem, calc(100vw - 32px));
       /* Match letter tiles to slot cells so one row of letters never needs a narrower tray */
       --rack-tile: clamp(28px, 3.8vw, 36px);
-      --row-gap-compact: clamp(4px, 1vh, 8px);
+      --row-gap-compact: clamp(6px, 1.2vh, 11px);
     }
 
     * {
@@ -818,7 +818,7 @@
     @media (max-width: 540px) {
       :root {
         --rack-tile: clamp(22px, calc((100vw - 56px) / 15.5), 30px);
-        --row-gap-compact: 3px;
+        --row-gap-compact: 6px;
       }
 
       header {
