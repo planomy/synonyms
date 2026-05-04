@@ -15,10 +15,6 @@
       --bg-tile: #171c24;
       --bg-tile-hover: #1f2630;
       --letter-ink: #8b99ab;
-      --slot-face-top: #f0f2f6;
-      --slot-face-bot: #c5ccd6;
-      --slot-inset: inset 0 3px 8px rgba(0, 0, 0, 0.32), inset 0 -2px 4px rgba(255, 255, 255, 0.45);
-      --slot-ring: rgba(255, 255, 255, 0.35);
       --stroke: rgba(255, 255, 255, 0.06);
       --stroke-strong: rgba(255, 255, 255, 0.1);
       --text: #e8eef5;
@@ -41,6 +37,10 @@
       /* Match letter tiles to slot cells so one row of letters never needs a narrower tray */
       --rack-tile: clamp(28px, 3.8vw, 36px);
       --row-gap-compact: clamp(8px, 1.4vh, 14px);
+      /* Half of prior tile radii — shared by rack letters + slots */
+      --rack-corner: clamp(4px, 0.5vh, 5px);
+      --slot-flat: #dce2ea;
+      --slot-flat-filled: #d4dce8;
     }
 
     * {
@@ -341,7 +341,7 @@
       position: relative;
       background: linear-gradient(180deg, #141a22 0%, #0f1318 100%);
       border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: clamp(10px, 1.4vh, 16px);
+      border-radius: clamp(5px, 0.7vh, 8px);
       padding: clamp(6px, 1.1vh, 10px) clamp(10px, 1.4vw, 14px);
       flex: 0 1 auto;
       min-height: 0;
@@ -367,10 +367,8 @@
     }
 
     .slot.slot-from-hint.filled {
-      box-shadow:
-        inset 0 2px 6px rgba(0, 0, 0, 0.18),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.25),
-        0 0 0 1px rgba(244, 208, 111, 0.45);
+      background: var(--slot-flat-filled);
+      box-shadow: 0 0 0 1px rgba(244, 208, 111, 0.55);
     }
 
     .row-wrap:focus {
@@ -426,12 +424,10 @@
       font-weight: 700;
       letter-spacing: 0.02em;
       color: var(--letter-ink);
-      background: linear-gradient(180deg, #1c232e 0%, #141a22 100%);
-      border: 1px solid rgba(0, 0, 0, 0.35);
-      border-radius: clamp(8px, 1vh, 11px);
-      box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.06),
-        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      background: var(--bg-tile);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: var(--rack-corner);
+      box-shadow: none;
       cursor: pointer;
       user-select: none;
       transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease, color 0.15s ease;
@@ -439,20 +435,21 @@
     }
 
     .letter:hover {
-      background: linear-gradient(180deg, #252d3a 0%, #1a212b 100%);
+      background: var(--bg-tile-hover);
+      border-color: rgba(255, 255, 255, 0.26);
       color: #aab8ca;
       transform: translateY(-1px);
     }
 
     .letter:active {
       transform: scale(0.97);
-      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+      box-shadow: none;
     }
 
     .letter.selected {
       border-color: rgba(94, 228, 212, 0.55);
       color: var(--text);
-      background: linear-gradient(180deg, #243038 0%, #1a242c 100%);
+      background: #252d38;
       box-shadow:
         0 0 0 1px rgba(94, 228, 212, 0.35),
         0 0 18px rgba(94, 228, 212, 0.22);
@@ -486,7 +483,7 @@
 
     .row-wrap.solved .slots {
       gap: 0;
-      border-radius: clamp(8px, 1.1vh, 14px);
+      border-radius: clamp(4px, 0.55vh, 7px);
       overflow: hidden;
     }
 
@@ -496,19 +493,19 @@
       min-width: var(--rack-tile);
       height: var(--rack-tile);
       min-height: var(--rack-tile);
-      border-radius: clamp(7px, 1vh, 10px);
+      border-radius: var(--rack-corner);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: clamp(0.8rem, 2vw, 0.98rem);
       font-weight: 700;
       cursor: pointer;
-      transition: box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease, background 0.15s ease;
       touch-action: manipulation;
       padding: 0;
       border: 1px solid rgba(0, 0, 0, 0.12);
-      background: linear-gradient(180deg, var(--slot-face-top) 0%, var(--slot-face-bot) 100%);
-      box-shadow: var(--slot-inset), 0 1px 0 var(--slot-ring);
+      background: var(--slot-flat);
+      box-shadow: none;
       color: #1a2230;
     }
 
@@ -519,18 +516,14 @@
     .slot.slot-active.empty:hover,
     .slot.slot-active.empty:focus-visible {
       border-color: rgba(94, 228, 212, 0.55);
-      box-shadow:
-        var(--slot-inset),
-        0 0 0 2px rgba(94, 228, 212, 0.35);
+      box-shadow: 0 0 0 2px rgba(94, 228, 212, 0.35);
     }
 
     .slot.slot-active.filled {
-      border-color: rgba(0, 0, 0, 0.18);
+      border-color: rgba(0, 0, 0, 0.15);
       color: #1a2230;
-      box-shadow:
-        inset 0 2px 6px rgba(0, 0, 0, 0.18),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.25),
-        0 0 0 1px rgba(94, 228, 212, 0.25);
+      background: var(--slot-flat-filled);
+      box-shadow: 0 0 0 1px rgba(94, 228, 212, 0.35);
     }
 
     .slot.slot-active:active {
@@ -852,7 +845,7 @@
 
       .row-wrap {
         padding: 4px 6px;
-        border-radius: 10px;
+        border-radius: 5px;
       }
 
       .hud-hint-btn {
