@@ -380,6 +380,31 @@
       border-color: rgba(94, 228, 212, 0.35);
     }
 
+    .row-wrap.row-wrong:not(.solved) {
+      border-color: rgba(220, 90, 90, 0.55);
+      box-shadow: 0 0 0 1px rgba(200, 60, 60, 0.35);
+    }
+
+    .row-wrap.row-wrong.row-active:not(.solved),
+    .row-wrap.row-wrong:focus-within:not(.solved) {
+      background: linear-gradient(180deg, #281a1c 0%, #1a1214 100%);
+      border: 2px solid rgba(220, 90, 90, 0.55);
+      box-shadow:
+        0 0 0 1px rgba(200, 50, 50, 0.25),
+        0 6px 28px rgba(140, 40, 40, 0.18);
+    }
+
+    .row-wrap.row-wrong .slot.slot-active.filled {
+      background: #b83838;
+      color: #fff;
+      border-color: rgba(0, 0, 0, 0.15);
+      box-shadow: 0 0 0 1px rgba(160, 45, 45, 0.55);
+    }
+
+    .row-wrap.row-wrong .slot.slot-from-hint.filled {
+      box-shadow: 0 0 0 1px rgba(244, 208, 111, 0.55);
+    }
+
     .row-inner {
       display: flex;
       flex-direction: column;
@@ -1444,6 +1469,49 @@
         rowWrap.classList.remove("solved");
       }
 
+      /**
+       * All slots filled but letters ≠ answer — show red tiles until the player clears the row.
+       */
+      function syncWrongGuessState(rowWrap) {
+        const word = rowWrap.dataset.word || "";
+        if (rowWrap.classList.contains("solved")) {
+          rowWrap.classList.remove("row-wrong");
+          rowWrap.removeAttribute("title");
+          return;
+        }
+        const slots = rowWrap.querySelectorAll(".slot.slot-active");
+        let filled = "";
+        let allFilled = true;
+        for (let i = 0; i < slots.length; i++) {
+          const s = slots[i];
+          filled += (s.textContent.trim() || "");
+          if (!s.classList.contains("filled")) allFilled = false;
+        }
+        if (allFilled && word.length > 0 && filled.length === word.length && filled !== word) {
+          rowWrap.classList.add("row-wrong");
+          rowWrap.setAttribute("title", "Not quite — tap to clear and try again");
+        } else {
+          rowWrap.classList.remove("row-wrong");
+          rowWrap.removeAttribute("title");
+        }
+      }
+
+      /** Clear a wrong full guess back to the tray (does not add moves). */
+      function resetWrongGuessRow(rowWrap) {
+        if (!rowWrap.classList.contains("row-wrong")) return;
+        rowWrap.classList.remove("row-wrong");
+        rowWrap.removeAttribute("title");
+        const filledSlots = Array.from(rowWrap.querySelectorAll(".slot.slot-active.filled"));
+        filledSlots.forEach(function (slotEl) {
+          const ch = slotEl.textContent;
+          appendReturnedLetterToTray(rowWrap, ch);
+          emptySlot(slotEl, rowWrap);
+        });
+        clearSelection();
+        syncHudHintButton();
+        syncRowInnerWidth(rowWrap);
+      }
+
       function checkRow(rowEl, word) {
         const slots = rowEl.querySelectorAll(".slot.slot-active");
         let filled = "";
@@ -1531,6 +1599,7 @@
         clearSelection();
         syncHudHintButton();
         syncRowInnerWidth(rowWrap);
+        syncWrongGuessState(rowWrap);
       }
 
       /**
@@ -1539,6 +1608,7 @@
       function swapTrayLetterIntoFilledSlot(rowWrap, letterBtn, slotEl) {
         const word = rowWrap.dataset.word || "";
         if (roundComplete || rowWrap.classList.contains("solved")) return;
+        if (rowWrap.classList.contains("row-wrong")) return;
         if (!slotEl.classList.contains("filled")) return;
         if (letterBtn.classList.contains("used")) return;
         if (String(letterBtn.dataset.row) !== String(rowWrap.dataset.row)) return;
@@ -1568,6 +1638,7 @@
         bumpMoves();
         clearSelection();
         checkRow(rowWrap, word);
+        syncWrongGuessState(rowWrap);
         syncHudHintButton();
         tryFinishRound(roundCtx.words, roundCtx.theme);
         syncRowInnerWidth(rowWrap);
@@ -1578,6 +1649,7 @@
        */
       function placeLetterFromTray(rowWrap, letterBtn, specificSlot) {
         const word = rowWrap.dataset.word || "";
+        if (rowWrap.classList.contains("row-wrong")) return;
         const slotEl =
           specificSlot &&
           specificSlot.classList.contains("slot-active") &&
@@ -1597,6 +1669,7 @@
         );
         bumpMoves();
         checkRow(rowWrap, word);
+        syncWrongGuessState(rowWrap);
         syncHudHintButton();
         tryFinishRound(roundCtx.words, roundCtx.theme);
       }
@@ -1698,6 +1771,7 @@
         targetSlot.dataset.fromHint = "1";
         targetSlot.setAttribute("aria-label", "Slot " + (idx + 1) + ": " + need + " (hint)");
         checkRow(rowWrap, word);
+        syncWrongGuessState(rowWrap);
         syncHudHintButton();
         tryFinishRound(roundCtx.words, roundCtx.theme);
       }
@@ -1736,6 +1810,12 @@
           const wrap = board.querySelector(".row-wrap:focus-within");
           if (!wrap) return;
           if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+          if (wrap.classList.contains("row-wrong")) {
+            e.preventDefault();
+            resetWrongGuessRow(wrap);
+            return;
+          }
 
           if (e.key === "Backspace") {
             e.preventDefault();
@@ -1955,6 +2035,12 @@
       function boardClickHandler(e) {
         if (roundComplete) return;
         const t = /** @type {HTMLElement} */ (e.target);
+        const wrongWrap = t.closest(".row-wrap.row-wrong");
+        if (wrongWrap) {
+          resetWrongGuessRow(wrongWrap);
+          return;
+        }
+
         const letterEl = t.closest(".letter");
         const slotEl = t.closest(".slot.slot-active");
 
