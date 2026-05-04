@@ -416,7 +416,8 @@
       flex: 0 0 auto;
       width: var(--rack-tile);
       min-width: var(--rack-tile);
-      height: clamp(34px, 5vh, 44px);
+      height: var(--rack-tile);
+      min-height: var(--rack-tile);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -486,7 +487,8 @@
       flex: 0 0 auto;
       width: var(--rack-tile);
       min-width: var(--rack-tile);
-      height: clamp(34px, 5vh, 44px);
+      height: var(--rack-tile);
+      min-height: var(--rack-tile);
       border-radius: clamp(7px, 1vh, 10px);
       display: flex;
       align-items: center;
@@ -522,17 +524,6 @@
         inset 0 2px 6px rgba(0, 0, 0, 0.18),
         inset 0 -1px 0 rgba(255, 255, 255, 0.25),
         0 0 0 1px rgba(94, 228, 212, 0.25);
-    }
-
-    /* Keep grid width for centering; hide “ghost” tile chrome on phones */
-    .slot.slot-pad {
-      pointer-events: none;
-      cursor: default;
-      opacity: 0;
-      visibility: hidden;
-      border: none;
-      background: transparent;
-      box-shadow: none;
     }
 
     .slot.slot-active:active {
@@ -865,11 +856,8 @@
       .row-wrap {
         padding: 3px 8px;
       }
-      .letter {
-        height: clamp(26px, 4.2vh, 34px);
-      }
-      .slot {
-        height: clamp(26px, 4.2vh, 34px);
+      :root {
+        --rack-tile: clamp(24px, 3.4vw, 32px);
       }
       .hud {
         padding: 6px 10px;
@@ -1776,23 +1764,15 @@
           slotsRow.setAttribute("aria-label", "Answer slots");
 
           const wordLen = word.length;
-          const leftPadCount = Math.floor((SLOT_GRID - wordLen) / 2);
-          for (let i = 0; i < SLOT_GRID; i++) {
-            if (i < leftPadCount || i >= leftPadCount + wordLen) {
-              const pad = document.createElement("span");
-              pad.className = "slot slot-pad";
-              pad.setAttribute("aria-hidden", "true");
-              slotsRow.appendChild(pad);
-            } else {
-              const wi = i - leftPadCount;
-              const slot = document.createElement("button");
-              slot.type = "button";
-              slot.className = "slot slot-active empty";
-              slot.dataset.index = String(wi);
-              slot.dataset.row = String(rowIdx);
-              slot.setAttribute("aria-label", "Slot " + (wi + 1) + " empty");
-              slotsRow.appendChild(slot);
-            }
+          /* One answer slot per letter — same count as the tray so rows line up (no wide 15-cell pad strip). */
+          for (let wi = 0; wi < wordLen; wi++) {
+            const slot = document.createElement("button");
+            slot.type = "button";
+            slot.className = "slot slot-active empty";
+            slot.dataset.index = String(wi);
+            slot.dataset.row = String(rowIdx);
+            slot.setAttribute("aria-label", "Slot " + (wi + 1) + " empty");
+            slotsRow.appendChild(slot);
           }
 
           const rowHead = document.createElement("div");
