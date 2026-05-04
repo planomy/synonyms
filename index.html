@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1419" />
+  <title>Synonyms</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #0b0d10;
+      --bg-panel: #11151a;
+      --bg-tile: #171c24;
+      --bg-tile-hover: #1f2630;
+      --letter-ink: #8b99ab;
+      --slot-face-top: #f0f2f6;
+      --slot-face-bot: #c5ccd6;
+      --slot-inset: inset 0 3px 8px rgba(0, 0, 0, 0.32), inset 0 -2px 4px rgba(255, 255, 255, 0.45);
+      --slot-ring: rgba(255, 255, 255, 0.35);
+      --stroke: rgba(255, 255, 255, 0.06);
+      --stroke-strong: rgba(255, 255, 255, 0.1);
+      --text: #e8eef5;
+      --text-muted: #7a8a9e;
+      --accent: #5ee4d4;
+      --accent-dim: rgba(94, 228, 212, 0.15);
+      --accent-glow: rgba(94, 228, 212, 0.45);
+      --gold: #f4d06f;
+      --gold-dim: rgba(244, 208, 111, 0.12);
+      --success: #7ddf8e;
+      --success-bg: rgba(125, 223, 142, 0.12);
+      --danger: #ff8b7a;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+      --font-display: "Fraunces", Georgia, serif;
+      --font-ui: "Outfit", system-ui, sans-serif;
+      /* Header / HUD column — narrower than full app so title + hint don’t span the whole rack */
+      --header-max: min(28rem, calc(100vw - 32px));
+      /* Match letter tiles to slot cells so one row of letters never needs a narrower tray */
+      --rack-tile: clamp(28px, 3.8vw, 36px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg-deep);
+      color: var(--text);
+      overflow: hidden;
+      background-image:
+        radial-gradient(ellipse 100% 70% at 50% -20%, rgba(255, 255, 255, 0.04), transparent),
+        radial-gradient(ellipse 70% 50% at 100% 0%, rgba(94, 228, 212, 0.03), transparent);
+    }
+
+    .app {
+      height: 100dvh;
+      max-height: 100dvh;
+      width: 100%;
+      max-width: min(1120px, 100%);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      padding: max(6px, env(safe-area-inset-top)) clamp(10px, 2vw, 20px) max(6px, env(safe-area-inset-bottom));
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+      flex-shrink: 0;
+      margin-bottom: 8px;
+      width: 100%;
+      max-width: var(--header-max);
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: clamp(1.35rem, 3.2vh, 1.85rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--text) 0%, var(--accent) 50%, var(--gold) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      line-height: 1.1;
+      margin: 0;
+    }
+
+    .tagline {
+      font-size: clamp(0.68rem, 1.5vh, 0.78rem);
+      color: var(--text-muted);
+      font-weight: 500;
+      text-align: center;
+      line-height: 1.35;
+      max-width: 36em;
+      margin: 0;
+    }
+
+    .level-indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 6px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: clamp(0.65rem, 1.45vh, 0.74rem);
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid rgba(94, 228, 212, 0.28);
+      box-shadow: 0 0 20px rgba(94, 228, 212, 0.08);
+    }
+
+    .daily-progress {
+      margin-top: 0;
+      font-size: clamp(0.68rem, 1.5vh, 0.8rem);
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    /** Level pill + set — full width above HUD; pill centred, set right-aligned with panel edge */
+    .hud-status-meta {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      width: 100%;
+      max-width: var(--header-max);
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 6px;
+      padding: 0 14px;
+      box-sizing: border-box;
+    }
+
+    .hud-status-meta .hud-status-spacer {
+      grid-column: 1;
+    }
+
+    .hud-status-meta .level-indicator {
+      grid-column: 2;
+      justify-self: center;
+      margin-top: 0;
+    }
+
+    .hud-status-meta .daily-progress {
+      grid-column: 3;
+      justify-self: end;
+      text-align: right;
+    }
+
+    .daily-complete {
+      padding: 2rem 1.25rem;
+      text-align: center;
+      max-width: 22rem;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    .daily-complete h3 {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+
+    .daily-complete p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .replay-btn {
+      margin-top: 1rem;
+      font-family: var(--font-ui);
+      font-size: clamp(0.88rem, 3vw, 0.98rem);
+      font-weight: 600;
+      padding: 12px 22px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      max-width: 18rem;
+      background: linear-gradient(135deg, var(--accent), #3bc4b3);
+      color: #061016;
+      box-shadow: 0 8px 28px rgba(94, 228, 212, 0.28);
+      touch-action: manipulation;
+    }
+
+    .replay-btn:active {
+      transform: scale(0.98);
+    }
+
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: clamp(8px, 2vw, 16px);
+      width: 100%;
+      max-width: var(--header-max);
+      margin-left: auto;
+      margin-right: auto;
+      padding: 8px 14px;
+      background: var(--bg-panel);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .hud-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .hud-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .hud-value {
+      font-size: clamp(1.05rem, 2.8vh, 1.35rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }
+
+    .hud-value.moves {
+      color: var(--gold);
+    }
+
+    .hints-hud {
+      flex: 1;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .hints-hud .hud-value {
+      color: var(--text-muted);
+      font-size: clamp(0.95rem, 2.4vh, 1.15rem);
+    }
+
+    .board {
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(4px, 0.8vh, 8px);
+      overflow: hidden;
+    }
+
+    .row-wrap {
+      background: linear-gradient(180deg, #141a22 0%, #0f1318 100%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: clamp(10px, 1.4vh, 16px);
+      padding: clamp(6px, 1.1vh, 10px) clamp(10px, 1.4vw, 14px);
+      flex: 1;
+      min-height: 0;
+      width: fit-content;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition:
+        background 0.22s ease,
+        border-color 0.22s ease,
+        box-shadow 0.22s ease;
+    }
+
+    .row-wrap.row-active:not(.solved) {
+      background: linear-gradient(180deg, #1a2532 0%, #121a24 100%);
+      border-color: rgba(94, 228, 212, 0.28);
+      box-shadow:
+        0 0 0 1px rgba(94, 228, 212, 0.18),
+        0 6px 28px rgba(94, 228, 212, 0.1);
+    }
+
+    .row-head {
+      display: flex;
+      justify-content: flex-end;
+      width: 100%;
+      margin-bottom: 4px;
+      flex-shrink: 0;
+    }
+
+    .hint-btn {
+      font-family: var(--font-ui);
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(244, 208, 111, 0.35);
+      background: rgba(244, 208, 111, 0.1);
+      color: var(--gold);
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .hint-btn:hover:not(:disabled) {
+      background: rgba(244, 208, 111, 0.18);
+    }
+
+    .hint-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .slot.slot-from-hint.filled {
+      box-shadow:
+        inset 0 2px 6px rgba(0, 0, 0, 0.18),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.25),
+        0 0 0 1px rgba(244, 208, 111, 0.45);
+    }
+
+    .row-wrap:focus {
+      outline: none;
+    }
+
+    .row-wrap:focus-visible {
+      box-shadow: 0 0 0 2px rgba(94, 228, 212, 0.45), 0 0 24px rgba(94, 228, 212, 0.12);
+      border-color: rgba(94, 228, 212, 0.35);
+    }
+
+    .row-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(8px, 1.2vh, 12px);
+      width: auto;
+      max-width: 100%;
+      min-height: 0;
+      margin-left: auto;
+      margin-right: auto;
+      box-sizing: border-box;
+    }
+
+    .row-wrap.solved {
+      border-color: rgba(125, 223, 142, 0.45);
+      box-shadow: 0 0 0 1px rgba(125, 223, 142, 0.2), 0 12px 40px rgba(125, 223, 142, 0.08);
+      animation: rowPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes rowPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    .letter-tray {
+      order: -1;
+      display: flex;
+      flex-wrap: nowrap;
+      gap: clamp(4px, 0.85vw, 7px);
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      width: 100%;
+      flex: 0 0 auto;
+      min-width: 0;
+      margin: 0 auto;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+    }
+
+    .letter {
+      flex: 0 0 auto;
+      width: var(--rack-tile);
+      min-width: var(--rack-tile);
+      height: clamp(34px, 5vh, 44px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.8rem, 2vw, 0.98rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--letter-ink);
+      background: linear-gradient(180deg, #1c232e 0%, #141a22 100%);
+      border: 1px solid rgba(0, 0, 0, 0.35);
+      border-radius: clamp(8px, 1vh, 11px);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease, color 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    .letter:hover {
+      background: linear-gradient(180deg, #252d3a 0%, #1a212b 100%);
+      color: #aab8ca;
+      transform: translateY(-1px);
+    }
+
+    .letter:active {
+      transform: scale(0.97);
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+    }
+
+    .letter.selected {
+      border-color: rgba(94, 228, 212, 0.55);
+      color: var(--text);
+      background: linear-gradient(180deg, #243038 0%, #1a242c 100%);
+      box-shadow:
+        0 0 0 1px rgba(94, 228, 212, 0.35),
+        0 0 18px rgba(94, 228, 212, 0.22);
+      transform: translateY(-2px);
+      z-index: 1;
+    }
+
+    .letter.used {
+      visibility: hidden;
+      pointer-events: none;
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+
+    .slots {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: clamp(4px, 0.85vw, 7px);
+      justify-content: center;
+      align-items: center;
+      align-self: center;
+      width: max-content;
+      flex: 0 0 auto;
+      min-width: 0;
+      max-width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .slot {
+      flex: 0 0 auto;
+      width: var(--rack-tile);
+      min-width: var(--rack-tile);
+      height: clamp(34px, 5vh, 44px);
+      border-radius: clamp(7px, 1vh, 10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.8rem, 2vw, 0.98rem);
+      font-weight: 700;
+      cursor: pointer;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+      touch-action: manipulation;
+      padding: 0;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      background: linear-gradient(180deg, var(--slot-face-top) 0%, var(--slot-face-bot) 100%);
+      box-shadow: var(--slot-inset), 0 1px 0 var(--slot-ring);
+      color: #1a2230;
+    }
+
+    .slot.slot-active.empty {
+      color: transparent;
+    }
+
+    .slot.slot-active.empty:hover,
+    .slot.slot-active.empty:focus-visible {
+      border-color: rgba(94, 228, 212, 0.55);
+      box-shadow:
+        var(--slot-inset),
+        0 0 0 2px rgba(94, 228, 212, 0.35);
+    }
+
+    .slot.slot-active.filled {
+      border-color: rgba(0, 0, 0, 0.18);
+      color: #1a2230;
+      box-shadow:
+        inset 0 2px 6px rgba(0, 0, 0, 0.18),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.25),
+        0 0 0 1px rgba(94, 228, 212, 0.25);
+    }
+
+    .slot.slot-pad {
+      pointer-events: none;
+      cursor: default;
+      opacity: 0.42;
+      background: linear-gradient(180deg, #232b36 0%, #171d26 100%);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.45);
+    }
+
+    .slot.slot-active:active {
+      transform: scale(0.97);
+    }
+
+    .slot.slot-active:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .row-wrap.solved .slot.slot-active.filled {
+      border-color: rgba(60, 120, 75, 0.45);
+      color: #2d6a45;
+      background: linear-gradient(180deg, #e8f6ec 0%, #c5e6cf 100%);
+      box-shadow:
+        inset 0 2px 6px rgba(0, 0, 0, 0.12),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.4),
+        0 0 0 1px rgba(125, 223, 142, 0.45);
+      animation: letterReveal 0.4s ease;
+    }
+
+    @keyframes letterReveal {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #setCompleteOverlay {
+      z-index: 110;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 9, 12, 0.82);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    .overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--bg-panel);
+      border: 1px solid var(--stroke-strong);
+      border-radius: calc(var(--radius) + 4px);
+      padding: 28px 26px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--shadow);
+      transform: scale(0.92) translateY(16px);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .overlay.open .modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal h2 {
+      font-family: var(--font-display);
+      font-size: 1.65rem;
+      margin-bottom: 8px;
+      color: var(--gold);
+    }
+
+    .modal .score-big {
+      font-size: 3rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      background: linear-gradient(180deg, var(--accent), var(--gold));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      line-height: 1.2;
+      margin: 12px 0;
+      transition: transform 0.05s linear;
+    }
+
+    .modal .score-big.is-rolling {
+      animation: scoreRollTick 0.08s steps(2) infinite;
+    }
+
+    @keyframes scoreRollTick {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-2px);
+      }
+    }
+
+    .modal p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      font-family: var(--font-ui);
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #3bc4b3);
+      color: #061016;
+      box-shadow: 0 8px 28px rgba(94, 228, 212, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      touch-action: manipulation;
+      width: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 36px rgba(94, 228, 212, 0.45);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      opacity: 0;
+      animation: confetti 1.2s ease-out forwards;
+    }
+
+    @keyframes confetti {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--dx), var(--dy)) rotate(720deg);
+      }
+    }
+
+    .modal .theme-reveal {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      color: var(--accent);
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .modal .theme-reveal strong {
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .modal .theme-reveal .level-line {
+      display: block;
+      margin-top: 0.35em;
+      font-size: 0.92em;
+      opacity: 0.78;
+    }
+
+    .modal-set-celebrate {
+      border-color: rgba(244, 208, 111, 0.35);
+      box-shadow:
+        var(--shadow),
+        0 0 60px rgba(244, 208, 111, 0.12),
+        inset 0 0 40px rgba(94, 228, 212, 0.06);
+      animation: setCelebratePop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes setCelebratePop {
+      0% {
+        transform: scale(0.88);
+        filter: brightness(1.2);
+      }
+      100% {
+        transform: scale(1);
+        filter: brightness(1);
+      }
+    }
+
+    .set-celebrate-sub {
+      margin-bottom: 8px !important;
+    }
+
+    #setContinueBtn {
+      letter-spacing: 0.12em;
+      font-size: 0.92rem;
+    }
+
+    .set-complete-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .btn-share-set {
+      font-family: var(--font-ui);
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 12px 20px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke-strong);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      cursor: pointer;
+      touch-action: manipulation;
+      width: 100%;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .btn-share-set:hover {
+      color: var(--accent);
+      border-color: rgba(94, 228, 212, 0.35);
+      background: rgba(94, 228, 212, 0.08);
+    }
+
+    .set-zero-hint-nudge {
+      font-family: var(--font-ui);
+      margin: 12px 0 4px;
+      padding: 0 4px;
+      text-align: center;
+    }
+
+    .set-zero-hint-head {
+      display: block;
+      font-size: clamp(0.95rem, 3vw, 1.05rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1.3;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    .set-zero-hint-body {
+      font-size: clamp(0.88rem, 2.8vw, 0.98rem);
+      font-weight: 600;
+      line-height: 1.45;
+      color: var(--gold);
+      margin: 0;
+      text-wrap: balance;
+    }
+
+    .set-zero-hint-nudge[hidden] {
+      display: none !important;
+    }
+
+    @media (max-height: 640px) {
+      .row-wrap {
+        padding: 3px 8px;
+      }
+      .letter {
+        height: clamp(28px, 4.8vh, 36px);
+      }
+      .slot {
+        height: clamp(32px, 5vh, 40px);
+      }
+      .hud {
+        padding: 6px 10px;
+        margin-bottom: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="particles" id="particles" aria-hidden="true"></div>
+
+  <div class="app">
+    <header>
+      <h1 class="logo">Synonyms</h1>
+      <p class="tagline">Click and type, or tap to solve.</p>
+      <p class="tagline">Solve all 500 puzzles.</p>
+    </header>
+
+    <div class="hud-status-meta" aria-live="polite">
+      <span class="hud-status-spacer" aria-hidden="true"></span>
+      <span class="level-indicator" id="levelIndicator">Level 1</span>
+      <span class="daily-progress" id="dailyProgress">Set 1 / 100</span>
+    </div>
+
+    <div class="hud" role="status" aria-live="polite">
+      <div class="hud-block">
+        <span class="hud-label">Moves</span>
+        <span class="hud-value moves" id="moveCount">0</span>
+      </div>
+      <div class="hud-block hints-hud">
+        <span class="hud-label">Hints</span>
+        <span class="hud-value" id="hintsHud">0 hints</span>
+      </div>
+      <div class="hud-block" style="text-align: right;">
+        <span class="hud-label">Total</span>
+        <span class="hud-value" id="scoreDisplay">&mdash;</span>
+      </div>
+    </div>
+
+    <main class="board" id="board" aria-label="Word puzzles"></main>
+  </div>
+
+  <div class="overlay" id="winOverlay" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <div class="modal">
+      <h2 id="winTitle">Round complete</h2>
+      <p class="theme-reveal" id="themeReveal" hidden></p>
+      <div class="score-big" id="finalScore">0</div>
+      <p id="winMessage"></p>
+      <button type="button" class="btn" id="nextRoundBtn">Next round</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="setCompleteOverlay" role="dialog" aria-modal="true" aria-labelledby="setCompleteTitle">
+    <div class="modal modal-set-celebrate">
+      <h2 id="setCompleteTitle">Set complete!</h2>
+      <p class="set-celebrate-sub">Running total</p>
+      <div class="score-big" id="setTallyScore">0</div>
+      <div class="set-zero-hint-nudge" id="setZeroHintNudge" hidden>
+        <span class="set-zero-hint-head">Zero hints!</span>
+        <p class="set-zero-hint-body" id="setZeroHintMsg"></p>
+      </div>
+      <div class="set-complete-actions">
+        <button type="button" class="btn-share-set" id="setShareBtn">Share</button>
+        <button type="button" class="btn" id="setContinueBtn">CONTINUE?</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="synonyms-data-level5">[{"level":5,"theme":"Ecstatic","words":["ECSTATIC","EUPHORIC","RAPTUROUS","JUBILANT","EXULTANT"]},{"level":5,"theme":"Despondent","words":["DESPONDENT","FORLORN","MELANCHOLIC","DOLEFUL","MOURNFUL"]},{"level":5,"theme":"Wrathful","words":["INCANDESCENT","WRATHFUL","IRATE","FURIOUS","LIVID"]},{"level":5,"theme":"Petrified","words":["PETRIFIED","TERRIFIED","AGHAST","ALARMED","FEARFUL"]},{"level":5,"theme":"Intrepid","words":["INTREPID","DAUNTLESS","VALIANT","GALLANT","HEROIC"]},{"level":5,"theme":"Sagacious","words":["SAGACIOUS","ASTUTE","SHREWD","DISCERNING","PERCEPTIVE"]},{"level":5,"theme":"Ludicrous","words":["LUDICROUS","PREPOSTEROUS","ABSURD","NONSENSICAL","INANE"]},{"level":5,"theme":"Fleet","words":["FLEET","NIMBLE","BRISK","RAPID","SWIFT"]},{"level":5,"theme":"Lethargic","words":["LETHARGIC","SLUGGISH","LANGUID","PLODDING","TORPID"]},{"level":5,"theme":"Gargantuan","words":["GARGANTUAN","COLOSSAL","IMMENSE","VAST","MONUMENTAL"]},{"level":5,"theme":"Minuscule","words":["MINUSCULE","DIMINUTIVE","MINUTE","COMPACT","PETITE"]},{"level":5,"theme":"Resplendent","words":["RESPLENDENT","EXQUISITE","ELEGANT","RADIANT","STUNNING"]},{"level":5,"theme":"Repugnant","words":["REPUGNANT","GROTESQUE","HIDEOUS","UNSIGHTLY","MONSTROUS"]},{"level":5,"theme":"Prosperous","words":["PROSPEROUS","AFFLUENT","OPULENT","WEALTHY","MONEYED"]},{"level":5,"theme":"Impoverished","words":["IMPOVERISHED","DESTITUTE","PENNILESS","DEPRIVED","INDIGENT"]},{"level":5,"theme":"Muted","words":["MUTED","HUSHED","SUBDUED","TRANQUIL","NOISELESS"]},{"level":5,"theme":"Clamorous","words":["CLAMOROUS","THUNDEROUS","DEAFENING","BOOMING","BLARING"]},{"level":5,"theme":"Enervated","words":["ENERVATED","FATIGUED","EXHAUSTED","WEARY","DEPLETED"]},{"level":5,"theme":"Formidable","words":["FORMIDABLE","ROBUST","VIGOROUS","POWERFUL","STURDY"]},{"level":5,"theme":"Debilitated","words":["DEBILITATED","FRAIL","FEEBLE","INFIRM","FRAGILE"]},{"level":5,"theme":"Immaculate","words":["IMMACULATE","PRISTINE","UNSPOILED","SPOTLESS","PURIFIED"]},{"level":5,"theme":"Contaminated","words":["CONTAMINATED","POLLUTED","SOILED","TAINTED","GRIMY"]},{"level":5,"theme":"Antiquated","words":["ANTIQUATED","ARCHAIC","VENERABLE","ANCIENT","TIMEWORN"]},{"level":5,"theme":"Contemporary","words":["CONTEMPORARY","MODERN","CURRENT","NOVEL","RECENT"]},{"level":5,"theme":"Magnanimous","words":["MAGNANIMOUS","BENEVOLENT","GRACIOUS","GENEROUS","HUMANE"]},{"level":5,"theme":"Malevolent","words":["MALEVOLENT","VICIOUS","RUTHLESS","MERCILESS","BRUTAL"]},{"level":5,"theme":"Forthright","words":["FORTHRIGHT","CANDID","SINCERE","TRUTHFUL","GENUINE"]},{"level":5,"theme":"Spurious","words":["SPURIOUS","DECEPTIVE","FRAUDULENT","BOGUS","COUNTERFEIT"]},{"level":5,"theme":"Droll","words":["DROLL","WITTY","HUMOROUS","COMICAL","AMUSING"]},{"level":5,"theme":"Grave","words":["GRAVE","SOLEMN","EARNEST","WEIGHTY","SOMBRE"]},{"level":5,"theme":"Straightforward","words":["STRAIGHTFORWARD","EFFORTLESS","PAINLESS","SIMPLE","BASIC"]},{"level":5,"theme":"Onerous","words":["ONEROUS","ARDUOUS","DEMANDING","TAXING","DIFFICULT"]},{"level":5,"theme":"Indispensable","words":["INDISPENSABLE","CRUCIAL","ESSENTIAL","PIVOTAL","VITAL"]},{"level":5,"theme":"Eccentric","words":["ECCENTRIC","PECULIAR","BIZARRE","UNUSUAL","CURIOUS"]},{"level":5,"theme":"Conventional","words":["CONVENTIONAL","CUSTOMARY","TYPICAL","STANDARD","ORDINARY"]},{"level":5,"theme":"Treacherous","words":["TREACHEROUS","HAZARDOUS","PERILOUS","RISKY","DANGEROUS"]},{"level":5,"theme":"Fortified","words":["FORTIFIED","SECURE","SHELTERED","PROTECTED","GUARDED"]},{"level":5,"theme":"Incandescent","words":["INCANDESCENT","LUMINOUS","RADIANT","BRILLIANT","GLEAMING"]},{"level":5,"theme":"Murky","words":["OBSCURE","MURKY","SHADOWY","DUSKY","GLOOMY"]},{"level":5,"theme":"Blistering","words":["BLISTERING","SCORCHING","SWELTERING","SEARING","BURNING"]},{"level":5,"theme":"Glacial","words":["GLACIAL","FRIGID","FREEZING","FROSTY","ICY"]},{"level":5,"theme":"Voracious","words":["VORACIOUS","RAVENOUS","FAMISHED","STARVING","HUNGRY"]},{"level":5,"theme":"Satiated","words":["SATIATED","REPLETE","STUFFED","FILLED","SATISFIED"]},{"level":5,"theme":"Desolate","words":["DESOLATE","VACANT","BARREN","HOLLOW","DESERTED"]},{"level":5,"theme":"Congested","words":["CONGESTED","THRONGED","OVERCROWDED","PACKED","CRAMPED"]},{"level":5,"theme":"Indolent","words":["INDOLENT","LETHARGIC","IDLE","INACTIVE","SLUGGISH"]},{"level":5,"theme":"Industrious","words":["INDUSTRIOUS","DILIGENT","OCCUPIED","ENGAGED","BUSTLING"]},{"level":5,"theme":"Impertinent","words":["IMPERTINENT","INSOLENT","DISCOURTEOUS","IMPOLITE","OFFENSIVE"]},{"level":5,"theme":"Decorous","words":["DECOROUS","COURTEOUS","RESPECTFUL","GRACIOUS","CIVIL"]},{"level":5,"theme":"Placid","words":["PLACID","SERENE","TRANQUIL","COMPOSED","PEACEFUL"]},{"level":5,"theme":"Feral","words":["FERAL","UNTAMED","SAVAGE","UNRESTRAINED","RECKLESS"]},{"level":5,"theme":"Circumspect","words":["CIRCUMSPECT","VIGILANT","CAUTIOUS","WARY","WATCHFUL"]},{"level":5,"theme":"Negligent","words":["NEGLIGENT","HEEDLESS","RECKLESS","CARELESS","HAPHAZARD"]},{"level":5,"theme":"Monotonous","words":["MONOTONOUS","TEDIOUS","TIRESOME","DREARY","DULL"]},{"level":5,"theme":"Exhilarating","words":["EXHILARATING","RIVETING","THRILLING","GRIPPING","STIRRING"]},{"level":5,"theme":"Illustrious","words":["ILLUSTRIOUS","RENOWNED","EMINENT","CELEBRATED","NOTABLE"]},{"level":5,"theme":"Clandestine","words":["CLANDESTINE","CONCEALED","VEILED","DISGUISED","HIDDEN"]},{"level":5,"theme":"Conspicuous","words":["CONSPICUOUS","EVIDENT","APPARENT","OBVIOUS","VISIBLE"]},{"level":5,"theme":"Perplexed","words":["PERPLEXED","BEWILDERED","BAFFLED","PUZZLED","CONFUSED"]},{"level":5,"theme":"Unequivocal","words":["UNEQUIVOCAL","DEFINITE","ASSURED","CONFIDENT","CERTAIN"]},{"level":5,"theme":"Serendipitous","words":["SERENDIPITOUS","FORTUNATE","BLESSED","FAVOURED","LUCKY"]},{"level":5,"theme":"Ill-fated","words":["ILLFATED","HAPLESS","CURSED","DOOMED","LUCKLESS"]},{"level":5,"theme":"Meticulous","words":["METICULOUS","ORDERLY","ORGANISED","TIDY","IMMACULATE"]},{"level":5,"theme":"Disordered","words":["DISORDERED","CHAOTIC","CLUTTERED","UNTIDY","HAPHAZARD"]},{"level":5,"theme":"Serrated","words":["SERRATED","JAGGED","POINTED","ACUTE","SHARP"]},{"level":5,"theme":"Blunted","words":["BLUNTED","ROUNDED","DULL","FLAT","POINTLESS"]},{"level":5,"theme":"Supple","words":["SUPPLE","DELICATE","TENDER","GENTLE","SMOOTH"]},{"level":5,"theme":"Abrasive","words":["ABRASIVE","RUGGED","COARSE","UNEVEN","JAGGED"]},{"level":5,"theme":"Saturated","words":["SATURATED","SODDEN","SOAKED","SOGGY","DRENCHED"]},{"level":5,"theme":"Desiccated","words":["DESICCATED","PARCHED","ARID","WITHERED","WATERLESS"]},{"level":5,"theme":"Gaunt","words":["GAUNT","SLENDER","NARROW","LEAN","SLIM"]},{"level":5,"theme":"Corpulent","words":["CORPULENT","BULKY","DENSE","BROAD","CHUNKY"]},{"level":5,"theme":"Precocious","words":["PRECOCIOUS","PREMATURE","PROMPT","TIMELY","ADVANCED"]},{"level":5,"theme":"Overdue","words":["OVERDUE","BELATED","DELAYED","TARDY","DEFERRED"]},{"level":5,"theme":"Contiguous","words":["CONTIGUOUS","ADJACENT","PROXIMATE","NEIGHBOURING","NEARBY"]},{"level":5,"theme":"Isolated","words":["ISOLATED","REMOTE","DISTANT","FARAWAY","REMOVED"]},{"level":5,"theme":"Instigate","words":["INSTIGATE","INITIATE","COMMENCE","LAUNCH","INAUGURATE"]},{"level":5,"theme":"Terminate","words":["TERMINATE","CONCLUDE","FINALISE","CEASE","COMPLETE"]},{"level":5,"theme":"Fabricate","words":["FABRICATE","CONSTRUCT","ASSEMBLE","FORGE","CREATE"]},{"level":5,"theme":"Demolish","words":["DEMOLISH","SHATTER","FRACTURE","RUPTURE","DESTROY"]},{"level":5,"theme":"Rehabilitate","words":["REHABILITATE","RESTORE","RECTIFY","REPAIR","MEND"]},{"level":5,"theme":"Displace","words":["DISPLACE","RELOCATE","TRANSFER","SHIFT","REPOSITION"]},{"level":5,"theme":"Catapult","words":["CATAPULT","PROPEL","HURL","FLING","LAUNCH"]},{"level":5,"theme":"Apprehend","words":["APPREHEND","SEIZE","CLUTCH","GRASP","SNATCH"]},{"level":5,"theme":"Scrutinise","words":["SCRUTINISE","INSPECT","OBSERVE","EXAMINE","SURVEY"]},{"level":5,"theme":"Articulate","words":["ARTICULATE","DECLARE","EXPRESS","ANNOUNCE","UTTER"]},{"level":5,"theme":"Vociferate","words":["VOCIFERATE","BELLOW","ROAR","HOLLER","SHOUT"]},{"level":5,"theme":"Intone","words":["INTONE","MURMUR","MUMBLE","MUTTER","WHISPER"]},{"level":5,"theme":"Facilitate","words":["FACILITATE","ASSIST","SUPPORT","AID","ENCOURAGE"]},{"level":5,"theme":"Impair","words":["IMPAIR","INJURE","WOUND","DAMAGE","HARM"]},{"level":5,"theme":"Venerate","words":["VENERATE","REVERE","CHERISH","ADORE","TREASURE"]},{"level":5,"theme":"Abominate","words":["ABOMINATE","ABHOR","LOATHE","DETEST","DESPISE"]},{"level":5,"theme":"Covet","words":["COVET","DESIRE","CRAVE","YEARN","SEEK"]},{"level":5,"theme":"Contemplate","words":["CONTEMPLATE","PONDER","REFLECT","DELIBERATE","CONSIDER"]},{"level":5,"theme":"Designate","words":["DESIGNATE","NOMINATE","SELECT","ELECT","APPOINT"]},{"level":5,"theme":"Ascertain","words":["ASCERTAIN","DISCOVER","DETECT","LOCATE","UNCOVER"]},{"level":5,"theme":"Obscure","words":["OBSCURE","CONCEAL","DISGUISE","SHROUD","MASK"]},{"level":5,"theme":"Vanquish","words":["VANQUISH","TRIUMPH","PREVAIL","CONQUER","SUCCEED"]},{"level":5,"theme":"Relinquish","words":["RELINQUISH","FORFEIT","SURRENDER","YIELD","ABANDON"]},{"level":5,"theme":"Manifest","words":["MANIFEST","REVEAL","EXHIBIT","DISCLOSE","DISPLAY"]}]</script>
+  <script type="application/json" id="synonyms-data-level4">[{"level":4,"theme":"Elated","words":["ELATED","JUBILANT","DELIGHTED","CHEERFUL","UPBEAT"]},{"level":4,"theme":"Mournful","words":["MOURNFUL","SOMBRE","GLOOMY","SORROWFUL","DOWNCAST"]},{"level":4,"theme":"Irate","words":["IRATE","LIVID","FURIOUS","ENRAGED","INCENSED"]},{"level":4,"theme":"Anxious","words":["ANXIOUS","UNEASY","FEARFUL","ALARMED","STARTLED"]},{"level":4,"theme":"Valiant","words":["VALIANT","HEROIC","GALLANT","DARING","COURAGEOUS"]},{"level":4,"theme":"Astute","words":["ASTUTE","CLEVER","SHREWD","BRIGHT","INSIGHTFUL"]},{"level":4,"theme":"Absurd","words":["ABSURD","FOOLISH","RIDICULOUS","SENSELESS","INANE"]},{"level":4,"theme":"Rapid","words":["RAPID","SWIFT","BRISK","SPEEDY","FLEET"]},{"level":4,"theme":"Sluggish","words":["SLUGGISH","GRADUAL","PLODDING","DELAYED","UNHURRIED"]},{"level":4,"theme":"Enormous","words":["ENORMOUS","IMMENSE","COLOSSAL","GIGANTIC","VAST"]},{"level":4,"theme":"Miniature","words":["MINIATURE","COMPACT","PETITE","TINY","MINUTE"]},{"level":4,"theme":"Elegant","words":["ELEGANT","GORGEOUS","RADIANT","GRACEFUL","EXQUISITE"]},{"level":4,"theme":"Grotesque","words":["GROTESQUE","HIDEOUS","REPULSIVE","UNSIGHTLY","GHASTLY"]},{"level":4,"theme":"Affluent","words":["AFFLUENT","WEALTHY","PROSPEROUS","OPULENT","LOADED"]},{"level":4,"theme":"Destitute","words":["DESTITUTE","PENNILESS","NEEDY","DEPRIVED","IMPOVERISHED"]},{"level":4,"theme":"Hushed","words":["HUSHED","SILENT","MUTED","SUBDUED","TRANQUIL"]},{"level":4,"theme":"Deafening","words":["DEAFENING","BOOMING","THUNDEROUS","BLARING","CLAMOROUS"]},{"level":4,"theme":"Weary","words":["WEARY","FATIGUED","DRAINED","EXHAUSTED","SPENT"]},{"level":4,"theme":"Robust","words":["ROBUST","STURDY","MIGHTY","POWERFUL","FORMIDABLE"]},{"level":4,"theme":"Fragile","words":["FRAGILE","FEEBLE","FRAIL","INFIRM","POWERLESS"]},{"level":4,"theme":"Pristine","words":["PRISTINE","SPOTLESS","IMMACULATE","PURE","POLISHED"]},{"level":4,"theme":"Grimy","words":["GRIMY","FILTHY","SOILED","STAINED","POLLUTED"]},{"level":4,"theme":"Ancient","words":["ANCIENT","ARCHAIC","ELDERLY","VENERABLE","AGED"]},{"level":4,"theme":"Novel","words":["NOVEL","MODERN","RECENT","CURRENT","FRESH"]},{"level":4,"theme":"Generous","words":["GENEROUS","GRACIOUS","HUMANE","CARING","BENEVOLENT"]},{"level":4,"theme":"Ruthless","words":["RUTHLESS","VICIOUS","BRUTAL","MERCILESS","HARSH"]},{"level":4,"theme":"Candid","words":["CANDID","SINCERE","TRUTHFUL","GENUINE","FRANK"]},{"level":4,"theme":"Deceptive","words":["DECEPTIVE","BOGUS","FRAUDULENT","PHONY","UNTRUE"]},{"level":4,"theme":"Witty","words":["WITTY","HUMOROUS","COMICAL","AMUSING","HILARIOUS"]},{"level":4,"theme":"Solemn","words":["SOLEMN","EARNEST","GRAVE","SOMBRE","STERN"]},{"level":4,"theme":"Effortless","words":["EFFORTLESS","SIMPLE","PAINLESS","BASIC","PLAIN"]},{"level":4,"theme":"Arduous","words":["ARDUOUS","COMPLEX","DEMANDING","DIFFICULT","TAXING"]},{"level":4,"theme":"Crucial","words":["CRUCIAL","VITAL","PIVOTAL","ESSENTIAL","MAJOR"]},{"level":4,"theme":"Bizarre","words":["BIZARRE","PECULIAR","UNUSUAL","ODD","STRANGE"]},{"level":4,"theme":"Customary","words":["CUSTOMARY","TYPICAL","STANDARD","ORDINARY","USUAL"]},{"level":4,"theme":"Hazardous","words":["HAZARDOUS","PERILOUS","RISKY","UNSAFE","TREACHEROUS"]},{"level":4,"theme":"Sheltered","words":["SHELTERED","SECURE","PROTECTED","GUARDED","HARMLESS"]},{"level":4,"theme":"Luminous","words":["LUMINOUS","RADIANT","VIVID","BRILLIANT","GLOWING"]},{"level":4,"theme":"Murky","words":["MURKY","SHADOWY","GLOOMY","DIM","DUSKY"]},{"level":4,"theme":"Scorching","words":["SCORCHING","SWELTERING","SEARING","BOILING","BLISTERING"]},{"level":4,"theme":"Frigid","words":["FRIGID","FREEZING","ICY","FROSTY","BITTER"]},{"level":4,"theme":"Ravenous","words":["RAVENOUS","FAMISHED","STARVING","PECKISH","HOLLOW"]},{"level":4,"theme":"Satiated","words":["SATIATED","STUFFED","FILLED","PACKED","SATISFIED"]},{"level":4,"theme":"Vacant","words":["VACANT","HOLLOW","BARREN","BARE","DESERTED"]},{"level":4,"theme":"Congested","words":["CONGESTED","PACKED","CRAMPED","THRONGED","CROWDED"]},{"level":4,"theme":"Lethargic","words":["LETHARGIC","IDLE","SLUGGISH","INACTIVE","INDOLENT"]},{"level":4,"theme":"Bustling","words":["BUSTLING","ACTIVE","OCCUPIED","ENGAGED","INDUSTRIOUS"]},{"level":4,"theme":"Insolent","words":["INSOLENT","IMPOLITE","OFFENSIVE","CRUDE","DISRESPECTFUL"]},{"level":4,"theme":"Courteous","words":["COURTEOUS","GRACIOUS","CIVIL","RESPECTFUL","WELLMANNERED"]},{"level":4,"theme":"Serene","words":["SERENE","TRANQUIL","COMPOSED","PEACEFUL","RELAXED"]},{"level":4,"theme":"Untamed","words":["UNTAMED","SAVAGE","FERAL","RECKLESS","FIERCE"]},{"level":4,"theme":"Vigilant","words":["VIGILANT","CAUTIOUS","WARY","WATCHFUL","ALERT"]},{"level":4,"theme":"Negligent","words":["NEGLIGENT","RECKLESS","SLOPPY","CARELESS","HASTY"]},{"level":4,"theme":"Tedious","words":["TEDIOUS","DULL","DREARY","MONOTONOUS","TIRESOME"]},{"level":4,"theme":"Thrilling","words":["THRILLING","GRIPPING","LIVELY","DRAMATIC","RIVETING"]},{"level":4,"theme":"Renowned","words":["RENOWNED","NOTABLE","CELEBRATED","EMINENT","ACCLAIMED"]},{"level":4,"theme":"Concealed","words":["CONCEALED","DISGUISED","VEILED","HIDDEN","SECRET"]},{"level":4,"theme":"Evident","words":["EVIDENT","APPARENT","OBVIOUS","VISIBLE","PLAIN"]},{"level":4,"theme":"Bewildered","words":["BEWILDERED","BAFFLED","PUZZLED","CONFUSED","UNCERTAIN"]},{"level":4,"theme":"Assured","words":["ASSURED","DEFINITE","CONFIDENT","CERTAIN","POSITIVE"]},{"level":4,"theme":"Fortunate","words":["FORTUNATE","FAVOURED","BLESSED","CHARMED","LUCKY"]},{"level":4,"theme":"Hapless","words":["HAPLESS","UNFORTUNATE","CURSED","DOOMED","LUCKLESS"]},{"level":4,"theme":"Orderly","words":["ORDERLY","TIDY","ORGANISED","IMMACULATE","NEAT"]},{"level":4,"theme":"Chaotic","words":["CHAOTIC","CLUTTERED","UNTIDY","DISORDERED","MESSY"]},{"level":4,"theme":"Jagged","words":["JAGGED","POINTED","ACUTE","KEEN","SHARP"]},{"level":4,"theme":"Rounded","words":["ROUNDED","BLUNT","DULL","FLAT","POINTLESS"]},{"level":4,"theme":"Tender","words":["TENDER","DELICATE","GENTLE","SMOOTH","MILD"]},{"level":4,"theme":"Abrasive","words":["ABRASIVE","RUGGED","COARSE","UNEVEN","HARSH"]},{"level":4,"theme":"Saturated","words":["SATURATED","SOAKED","SOGGY","DAMP","MOIST"]},{"level":4,"theme":"Desiccated","words":["DESICCATED","PARCHED","ARID","CRISP","WATERLESS"]},{"level":4,"theme":"Slender","words":["SLENDER","NARROW","LEAN","SLIM","THIN"]},{"level":4,"theme":"Dense","words":["DENSE","BULKY","BROAD","CHUNKY","THICK"]},{"level":4,"theme":"Premature","words":["PREMATURE","PROMPT","TIMELY","ADVANCED","EARLY"]},{"level":4,"theme":"Belated","words":["BELATED","OVERDUE","DELAYED","TARDY","LATE"]},{"level":4,"theme":"Adjacent","words":["ADJACENT","PROXIMATE","NEARBY","NEIGHBOURING","CLOSE"]},{"level":4,"theme":"Remote","words":["REMOTE","DISTANT","FARAWAY","REMOVED","ISOLATED"]},{"level":4,"theme":"Commence","words":["COMMENCE","INITIATE","LAUNCH","BEGIN","START"]},{"level":4,"theme":"Conclude","words":["CONCLUDE","TERMINATE","CEASE","FINISH","COMPLETE"]},{"level":4,"theme":"Construct","words":["CONSTRUCT","ASSEMBLE","PRODUCE","FORGE","CREATE"]},{"level":4,"theme":"Fracture","words":["FRACTURE","SHATTER","RUPTURE","SMASH","DESTROY"]},{"level":4,"theme":"Restore","words":["RESTORE","REPAIR","MEND","RECTIFY","CORRECT"]},{"level":4,"theme":"Relocate","words":["RELOCATE","TRANSFER","DISPLACE","SHIFT","MOVE"]},{"level":4,"theme":"Propel","words":["PROPEL","FLING","HURL","TOSS","LAUNCH"]},{"level":4,"theme":"Seize","words":["SEIZE","CLUTCH","GRASP","SNATCH","GRAB"]},{"level":4,"theme":"Observe","words":["OBSERVE","INSPECT","GAZE","STARE","WATCH"]},{"level":4,"theme":"Declare","words":["DECLARE","EXPRESS","ANNOUNCE","UTTER","STATE"]},{"level":4,"theme":"Bellow","words":["BELLOW","ROAR","HOLLER","YELL","SCREAM"]},{"level":4,"theme":"Murmur","words":["MURMUR","MUMBLE","MUTTER","WHISPER","BREATHE"]},{"level":4,"theme":"Assist","words":["ASSIST","SUPPORT","AID","ENCOURAGE","FACILITATE"]},{"level":4,"theme":"Injure","words":["INJURE","WOUND","DAMAGE","HARM","IMPAIR"]},{"level":4,"theme":"Cherish","words":["CHERISH","ADORE","TREASURE","REVERE","VALUE"]},{"level":4,"theme":"Loathe","words":["LOATHE","DETEST","DESPISE","ABHOR","DISLIKE"]},{"level":4,"theme":"Desire","words":["DESIRE","CRAVE","COVET","YEARN","SEEK"]},{"level":4,"theme":"Ponder","words":["PONDER","REFLECT","CONSIDER","REASON","CONTEMPLATE"]},{"level":4,"theme":"Select","words":["SELECT","ELECT","DECIDE","NOMINATE","CHOOSE"]},{"level":4,"theme":"Discover","words":["DISCOVER","DETECT","LOCATE","UNCOVER","FIND"]},{"level":4,"theme":"Obscure","words":["OBSCURE","CONCEAL","DISGUISE","MASK","HIDE"]},{"level":4,"theme":"Triumph","words":["TRIUMPH","PREVAIL","CONQUER","SUCCEED","WIN"]},{"level":4,"theme":"Forfeit","words":["FORFEIT","SURRENDER","MISPLACE","FAIL","LOSE"]},{"level":4,"theme":"Exhibit","words":["EXHIBIT","REVEAL","DISPLAY","EXPOSE","PRESENT"]}]</script>
+  <script type="application/json" id="synonyms-data-level3">[{"level":3,"theme":"Happy","words":["HAPPY","ELATED","JUBILANT","EUPHORIC","ECSTATIC"]},{"level":3,"theme":"Sad","words":["SAD","DESPONDENT","MOURNFUL","SOMBRE","FORLORN"]},{"level":3,"theme":"Angry","words":["ANGRY","IRATE","INCENSED","LIVID","ENRAGED"]},{"level":3,"theme":"Scared","words":["SCARED","PETRIFIED","TERRIFIED","FEARFUL","ALARMED"]},{"level":3,"theme":"Brave","words":["BRAVE","VALIANT","HEROIC","GALLANT","INTREPID"]},{"level":3,"theme":"Smart","words":["SMART","ASTUTE","SHREWD","BRILLIANT","INGENIOUS"]},{"level":3,"theme":"Silly","words":["SILLY","ABSURD","LUDICROUS","FOOLISH","INANE"]},{"level":3,"theme":"Fast","words":["FAST","SWIFT","RAPID","FLEET","BRISK"]},{"level":3,"theme":"Slow","words":["SLOW","SLUGGISH","GRADUAL","PLODDING","LETHARGIC"]},{"level":3,"theme":"Big","words":["BIG","VAST","COLOSSAL","IMMENSE","ENORMOUS"]},{"level":3,"theme":"Small","words":["SMALL","TINY","MINUTE","COMPACT","MINIATURE"]},{"level":3,"theme":"Beautiful","words":["BEAUTIFUL","EXQUISITE","ELEGANT","RADIANT","STUNNING"]},{"level":3,"theme":"Ugly","words":["UGLY","GROTESQUE","HIDEOUS","UNSIGHTLY","REPULSIVE"]},{"level":3,"theme":"Rich","words":["RICH","AFFLUENT","WEALTHY","OPULENT","PROSPEROUS"]},{"level":3,"theme":"Poor","words":["POOR","DESTITUTE","PENNILESS","NEEDY","DEPRIVED"]},{"level":3,"theme":"Quiet","words":["QUIET","NOISELESS","SOUNDLESS","INAUDIBLE","MUTED"]},{"level":3,"theme":"Loud","words":["LOUD","DEAFENING","BOOMING","BLARING","THUNDEROUS"]},{"level":3,"theme":"Tired","words":["TIRED","EXHAUSTED","FATIGUED","WEARY","SPENT"]},{"level":3,"theme":"Strong","words":["STRONG","ROBUST","POWERFUL","MIGHTY","FORMIDABLE"]},{"level":3,"theme":"Weak","words":["WEAK","FRAIL","FEEBLE","FRAGILE","INFIRM"]},{"level":3,"theme":"Clean","words":["CLEAN","PRISTINE","SPOTLESS","IMMACULATE","PURE"]},{"level":3,"theme":"Dirty","words":["DIRTY","FILTHY","GRIMY","SOILED","POLLUTED"]},{"level":3,"theme":"Old","words":["OLD","ANCIENT","ARCHAIC","AGED","VENERABLE"]},{"level":3,"theme":"New","words":["NEW","NASCENT","UNTRIED","EMERGING","ORIGINAL"]},{"level":3,"theme":"Kind","words":["KIND","BENEVOLENT","GRACIOUS","GENEROUS","HUMANE"]},{"level":3,"theme":"Cruel","words":["CRUEL","RUTHLESS","BRUTAL","VICIOUS","MERCILESS"]},{"level":3,"theme":"Honest","words":["HONEST","TRUTHFUL","SINCERE","CANDID","GENUINE"]},{"level":3,"theme":"False","words":["FALSE","DECEPTIVE","BOGUS","FRAUDULENT","UNTRUE"]},{"level":3,"theme":"Funny","words":["FUNNY","HUMOROUS","WITTY","AMUSING","COMICAL"]},{"level":3,"theme":"Serious","words":["SERIOUS","SOLEMN","GRAVE","EARNEST","SOMBRE"]},{"level":3,"theme":"Easy","words":["EASY","SIMPLE","EFFORTLESS","BASIC","PAINLESS"]},{"level":3,"theme":"Hard","words":["HARD","ARDUOUS","DIFFICULT","DEMANDING","COMPLEX"]},{"level":3,"theme":"Important","words":["IMPORTANT","VITAL","CRUCIAL","ESSENTIAL","PIVOTAL"]},{"level":3,"theme":"Strange","words":["STRANGE","UNCANNY","OUTLANDISH","ABNORMAL","CURIOUS"]},{"level":3,"theme":"Normal","words":["NORMAL","TYPICAL","ORDINARY","STANDARD","CUSTOMARY"]},{"level":3,"theme":"Dangerous","words":["DANGEROUS","TREACHEROUS","PRECARIOUS","MENACING","DIRE"]},{"level":3,"theme":"Safe","words":["SAFE","INVULNERABLE","IMPREGNABLE","UNASSAILABLE","GUARDED"]},{"level":3,"theme":"Bright","words":["BRIGHT","RADIANT","LUMINOUS","VIVID","BRILLIANT"]},{"level":3,"theme":"Dark","words":["DARK","STYGIAN","TENEBROUS","INKY","LIGHTLESS"]},{"level":3,"theme":"Hot","words":["HOT","SCORCHING","SWELTERING","SEARING","BOILING"]},{"level":3,"theme":"Cold","words":["COLD","FRIGID","ICY","FREEZING","BITTER"]},{"level":3,"theme":"Hungry","words":["HUNGRY","VORACIOUS","INSATIABLE","RAPACIOUS","GREEDY"]},{"level":3,"theme":"Full","words":["FULL","SATIATED","STUFFED","PACKED","FILLED"]},{"level":3,"theme":"Empty","words":["EMPTY","VACANT","HOLLOW","BARREN","DESERTED"]},{"level":3,"theme":"Crowded","words":["CROWDED","CONGESTED","PACKED","CRAMPED","THRONGED"]},{"level":3,"theme":"Lazy","words":["LAZY","IDLE","LETHARGIC","SLUGGISH","INDOLENT"]},{"level":3,"theme":"Busy","words":["BUSY","HECTIC","FRANTIC","TEEMING","ABUZZ"]},{"level":3,"theme":"Rude","words":["RUDE","INSOLENT","IMPERTINENT","BRASH","DISCOURTEOUS"]},{"level":3,"theme":"Polite","words":["POLITE","DECOROUS","URBANE","CIVIL","GALLANT"]},{"level":3,"theme":"Calm","words":["CALM","TRANQUIL","SERENE","COMPOSED","PEACEFUL"]},{"level":3,"theme":"Wild","words":["WILD","UNTAMED","SAVAGE","FERAL","RECKLESS"]},{"level":3,"theme":"Careful","words":["CAREFUL","CAUTIOUS","VIGILANT","WARY","WATCHFUL"]},{"level":3,"theme":"Careless","words":["CARELESS","SLAPDASH","CURSORY","PERFUNCTORY","REMISS"]},{"level":3,"theme":"Boring","words":["BORING","TEDIOUS","DULL","MONOTONOUS","TIRESOME"]},{"level":3,"theme":"Exciting","words":["EXCITING","RIVETING","SCINTILLATING","ENTHRALLING","SPELLBINDING"]},{"level":3,"theme":"Famous","words":["FAMOUS","RENOWNED","CELEBRATED","NOTABLE","EMINENT"]},{"level":3,"theme":"Hidden","words":["HIDDEN","CONCEALED","SECRET","DISGUISED","VEILED"]},{"level":3,"theme":"Clear","words":["CLEAR","MANIFEST","PATENT","UNMISTAKABLE","TRANSPARENT"]},{"level":3,"theme":"Confused","words":["CONFUSED","DISORIENTED","FLUMMOXED","ADDLED","DISCOMFITED"]},{"level":3,"theme":"Certain","words":["CERTAIN","DEFINITE","ASSURED","CONFIDENT","POSITIVE"]},{"level":3,"theme":"Lucky","words":["LUCKY","AUSPICIOUS","SERENDIPITOUS","FAVOURABLE","PROPITIOUS"]},{"level":3,"theme":"Unlucky","words":["UNLUCKY","HAPLESS","CURSED","DOOMED","UNFORTUNATE"]},{"level":3,"theme":"Neat","words":["NEAT","ORDERLY","TIDY","ORGANISED","IMMACULATE"]},{"level":3,"theme":"Messy","words":["MESSY","CHAOTIC","CLUTTERED","UNTIDY","DISORDERED"]},{"level":3,"theme":"Sharp","words":["SHARP","EDGED","FINE","KEEN","STABBING"]},{"level":3,"theme":"Blunt","words":["BLUNT","OBTUSE","DEADENED","UNSHARPENED","DULL"]},{"level":3,"theme":"Soft","words":["SOFT","TENDER","GENTLE","SMOOTH","DELICATE"]},{"level":3,"theme":"Rough","words":["ROUGH","COARSE","RUGGED","UNEVEN","ABRASIVE"]},{"level":3,"theme":"Wet","words":["WET","DAMP","MOIST","SOGGY","SATURATED"]},{"level":3,"theme":"Dry","words":["DRY","ARID","PARCHED","DESICCATED","WATERLESS"]},{"level":3,"theme":"Thin","words":["THIN","SLENDER","SLIM","NARROW","LEAN"]},{"level":3,"theme":"Thick","words":["THICK","STOUT","SUBSTANTIAL","HEAVYSET","BURLY"]},{"level":3,"theme":"Early","words":["EARLY","FORWARD","ANTICIPATORY","ADVANCED","PRIMITIVE"]},{"level":3,"theme":"Late","words":["LATE","OVERDUE","UNPUNCTUAL","TARDIVE","POSTPONED"]},{"level":3,"theme":"Near","words":["NEAR","ADJACENT","CLOSE","NEARBY","PROXIMATE"]},{"level":3,"theme":"Far","words":["FAR","OUTLYING","ULTERIOR","DISTANT","REMOVED"]},{"level":3,"theme":"Begin","words":["BEGIN","INAUGURATE","ORIGINATE","USHER","OPEN"]},{"level":3,"theme":"End","words":["END","CONCLUDE","FINISH","CEASE","TERMINATE"]},{"level":3,"theme":"Build","words":["BUILD","CONSTRUCT","ASSEMBLE","CREATE","FORGE"]},{"level":3,"theme":"Break","words":["BREAK","SHATTER","FRACTURE","SMASH","RUPTURE"]},{"level":3,"theme":"Fix","words":["FIX","REPAIR","RESTORE","MEND","RECTIFY"]},{"level":3,"theme":"Move","words":["MOVE","RELOCATE","TRANSFER","SHIFT","DISPLACE"]},{"level":3,"theme":"Throw","words":["THROW","HURL","FLING","TOSS","PROPEL"]},{"level":3,"theme":"Grab","words":["GRAB","SNARE","CAPTURE","NAB","WRANGLE"]},{"level":3,"theme":"Look","words":["LOOK","OBSERVE","GAZE","STARE","INSPECT"]},{"level":3,"theme":"Speak","words":["SPEAK","UTTER","DECLARE","EXPRESS","ANNOUNCE"]},{"level":3,"theme":"Shout","words":["SHOUT","BELLOW","YELL","ROAR","HOLLER"]},{"level":3,"theme":"Whisper","words":["WHISPER","RUSTLE","HISS","SIGH","BREATHE"]},{"level":3,"theme":"Help","words":["HELP","ASSIST","AID","SUPPORT","FACILITATE"]},{"level":3,"theme":"Hurt","words":["HURT","TRAUMATISE","CRIPPLE","SCOURGE","MAIM"]},{"level":3,"theme":"Love","words":["LOVE","CHERISH","ADORE","TREASURE","REVERE"]},{"level":3,"theme":"Hate","words":["HATE","LOATHE","DETEST","DESPISE","ABHOR"]},{"level":3,"theme":"Want","words":["WANT","DESIRE","CRAVE","COVET","YEARN"]},{"level":3,"theme":"Think","words":["THINK","DELIBERATE","COGITATE","RUMINATE","MEDITATE"]},{"level":3,"theme":"Choose","words":["CHOOSE","SELECT","DECIDE","ELECT","NOMINATE"]},{"level":3,"theme":"Find","words":["FIND","ASCERTAIN","TRACK","PINPOINT","UNCOVER"]},{"level":3,"theme":"Hide","words":["HIDE","CONCEAL","DISGUISE","OBSCURE","MASK"]},{"level":3,"theme":"Win","words":["WIN","VANQUISH","SUBJUGATE","OVERCOME","SUPPLANT"]},{"level":3,"theme":"Lose","words":["LOSE","MISLAY","FORFEIT","SACRIFICE","DROP"]},{"level":3,"theme":"Show","words":["SHOW","REVEAL","DISPLAY","EXHIBIT","EXPOSE"]}]</script>
+  <script type="application/json" id="synonyms-data-level2">[{"level":2,"theme":"Happy","words":["HAPPY","CONTENT","DELIGHTED","UPBEAT","SATISFIED"]},{"level":2,"theme":"Sad","words":["SAD","MISERABLE","GLOOMY","DOWNCAST","SORROWFUL"]},{"level":2,"theme":"Angry","words":["ANGRY","IRRITATED","FURIOUS","ENRAGED","RESENTFUL"]},{"level":2,"theme":"Scared","words":["SCARED","ANXIOUS","STARTLED","TERRIFIED","UNEASY"]},{"level":2,"theme":"Brave","words":["BRAVE","COURAGEOUS","FEARLESS","DARING","VALIANT"]},{"level":2,"theme":"Smart","words":["SMART","INTELLIGENT","CLEVER","SHARP","INSIGHTFUL"]},{"level":2,"theme":"Silly","words":["SILLY","RIDICULOUS","FOOLISH","ABSURD","SENSELESS"]},{"level":2,"theme":"Fast","words":["FAST","RAPID","SWIFT","BRISK","SPEEDY"]},{"level":2,"theme":"Slow","words":["SLOW","GRADUAL","SLUGGISH","DELAYED","UNHURRIED"]},{"level":2,"theme":"Big","words":["BIG","ENORMOUS","IMMENSE","VAST","GIGANTIC"]},{"level":2,"theme":"Small","words":["SMALL","TINY","COMPACT","MINIATURE","LITTLE"]},{"level":2,"theme":"Beautiful","words":["BEAUTIFUL","ELEGANT","GORGEOUS","GRACEFUL","LOVELY"]},{"level":2,"theme":"Ugly","words":["UGLY","HIDEOUS","UNATTRACTIVE","GROTESQUE","UNSIGHTLY"]},{"level":2,"theme":"Rich","words":["RICH","WEALTHY","AFFLUENT","PROSPEROUS","LOADED"]},{"level":2,"theme":"Poor","words":["POOR","NEEDY","BROKE","DEPRIVED","PENNILESS"]},{"level":2,"theme":"Quiet","words":["QUIET","SILENT","MUTED","HUSHED","SUBDUED"]},{"level":2,"theme":"Loud","words":["LOUD","NOISY","BOOMING","DEAFENING","BLARING"]},{"level":2,"theme":"Tired","words":["TIRED","WEARY","DRAINED","FATIGUED","EXHAUSTED"]},{"level":2,"theme":"Strong","words":["STRONG","POWERFUL","STURDY","FORCEFUL","ROBUST"]},{"level":2,"theme":"Weak","words":["WEAK","IMPOTENT","ENERVATED","DEBILITATED","IMPAIRED"]},{"level":2,"theme":"Clean","words":["CLEAN","SPOTLESS","PRISTINE","TIDY","PURE"]},{"level":2,"theme":"Dirty","words":["DIRTY","FILTHY","GRIMY","SOILED","STAINED"]},{"level":2,"theme":"Old","words":["OLD","ANCIENT","AGED","ELDERLY","TIMEWORN"]},{"level":2,"theme":"New","words":["NEW","FRESH","RECENT","MODERN","CURRENT"]},{"level":2,"theme":"Kind","words":["KIND","CARING","GENEROUS","GENTLE","THOUGHTFUL"]},{"level":2,"theme":"Cruel","words":["CRUEL","BRUTAL","HARSH","RUTHLESS","VICIOUS"]},{"level":2,"theme":"Honest","words":["HONEST","CANDID","VERACIOUS","UPRIGHT","SCRUPULOUS"]},{"level":2,"theme":"False","words":["FALSE","FAKE","BOGUS","UNTRUE","DECEPTIVE"]},{"level":2,"theme":"Funny","words":["FUNNY","AMUSING","HUMOROUS","HILARIOUS","WITTY"]},{"level":2,"theme":"Serious","words":["SERIOUS","SOLEMN","EARNEST","GRAVE","SINCERE"]},{"level":2,"theme":"Easy","words":["EASY","PAINLESS","UNDEMANDING","UNCOMPLICATED","STRAIGHTFORWARD"]},{"level":2,"theme":"Hard","words":["HARD","DIFFICULT","COMPLEX","DEMANDING","TRICKY"]},{"level":2,"theme":"Important","words":["IMPORTANT","CRUCIAL","VITAL","ESSENTIAL","MAJOR"]},{"level":2,"theme":"Strange","words":["STRANGE","UNUSUAL","BIZARRE","PECULIAR","ODD"]},{"level":2,"theme":"Normal","words":["NORMAL","TYPICAL","USUAL","STANDARD","ORDINARY"]},{"level":2,"theme":"Dangerous","words":["DANGEROUS","RISKY","HAZARDOUS","UNSAFE","PERILOUS"]},{"level":2,"theme":"Safe","words":["SAFE","SECURE","HARMLESS","PROTECTED","SHELTERED"]},{"level":2,"theme":"Bright","words":["BRIGHT","RADIANT","GLOWING","VIVID","BRILLIANT"]},{"level":2,"theme":"Dark","words":["DARK","BLEAK","DREARY","SOMBER","DUSKY"]},{"level":2,"theme":"Hot","words":["HOT","SCORCHING","BOILING","HEATED","SWELTERING"]},{"level":2,"theme":"Cold","words":["COLD","BITTER","RAW","NIPPY","WINTRY"]},{"level":2,"theme":"Hungry","words":["HUNGRY","EMPTY","CRAVING","YEARNING","UNFED"]},{"level":2,"theme":"Full","words":["FULL","REPLETE","GORGED","SLAKED","SURFEITED"]},{"level":2,"theme":"Empty","words":["EMPTY","VACANT","HOLLOW","BARE","DESERTED"]},{"level":2,"theme":"Crowded","words":["CROWDED","PACKED","CRAMPED","BUSY","CONGESTED"]},{"level":2,"theme":"Lazy","words":["LAZY","IDLE","SLUGGISH","INACTIVE","LETHARGIC"]},{"level":2,"theme":"Busy","words":["BUSY","ACTIVE","OCCUPIED","ENGAGED","BUSTLING"]},{"level":2,"theme":"Rude","words":["RUDE","IMPOLITE","CRUDE","OFFENSIVE","INSOLENT"]},{"level":2,"theme":"Polite","words":["POLITE","MANNERLY","DECOROUS","REFINED","CIVIL"]},{"level":2,"theme":"Calm","words":["CALM","PEACEFUL","TRANQUIL","RELAXED","COMPOSED"]},{"level":2,"theme":"Wild","words":["WILD","FERAL","UNRESTRAINED","BOISTEROUS","ROUGH"]},{"level":2,"theme":"Careful","words":["CAREFUL","PRUDENT","METICULOUS","GUARDED","DELIBERATE"]},{"level":2,"theme":"Careless","words":["CARELESS","SLOPPY","HASTY","RECKLESS","NEGLIGENT"]},{"level":2,"theme":"Boring","words":["BORING","MUNDANE","HUMDRUM","INSIPID","VAPID"]},{"level":2,"theme":"Exciting","words":["EXCITING","EXHILARATING","STIRRING","ELECTRIFYING","HEADY"]},{"level":2,"theme":"Famous","words":["FAMOUS","RENOWNED","NOTABLE","POPULAR","CELEBRATED"]},{"level":2,"theme":"Hidden","words":["HIDDEN","SECRET","CONCEALED","BURIED","DISGUISED"]},{"level":2,"theme":"Clear","words":["CLEAR","OBVIOUS","EVIDENT","PLAIN","APPARENT"]},{"level":2,"theme":"Confused","words":["CONFUSED","PUZZLED","BAFFLED","UNCERTAIN","BEWILDERED"]},{"level":2,"theme":"Certain","words":["CERTAIN","SURE","DEFINITE","CONFIDENT","ASSURED"]},{"level":2,"theme":"Lucky","words":["LUCKY","PROPITIOUS","FAVOURABLE","FORTUITOUS","OPPORTUNE"]},{"level":2,"theme":"Unlucky","words":["UNLUCKY","ILLFATED","ACCURSED","INFELICITOUS","DOOMED"]},{"level":2,"theme":"Neat","words":["NEAT","TIDY","ORDERLY","CLEAN","ORGANISED"]},{"level":2,"theme":"Messy","words":["MESSY","DISHEVELLED","DISORDERLY","SCRUFFY","SHABBY"]},{"level":2,"theme":"Sharp","words":["SHARP","POINTED","KEEN","JAGGED","ACUTE"]},{"level":2,"theme":"Blunt","words":["BLUNT","EDGELESS","SMOOTHED","WORN","FLAT"]},{"level":2,"theme":"Soft","words":["SOFT","PLUSH","SUPPLE","SILKY","VELVETY"]},{"level":2,"theme":"Rough","words":["ROUGH","COARSE","RUGGED","HARSH","UNEVEN"]},{"level":2,"theme":"Wet","words":["WET","DRIPPING","SODDEN","WATERLOGGED","SOGGY"]},{"level":2,"theme":"Dry","words":["DRY","DESICCATED","WITHERED","BAKED","TORRID"]},{"level":2,"theme":"Thin","words":["THIN","SPARE","SLIGHT","GAUNT","SPINDLY"]},{"level":2,"theme":"Thick","words":["THICK","BROAD","BULKY","CHUNKY","DENSE"]},{"level":2,"theme":"Early","words":["EARLY","PROMPT","TIMELY","PREMATURE","ADVANCED"]},{"level":2,"theme":"Late","words":["LATE","DELAYED","OVERDUE","TARDY","BELATED"]},{"level":2,"theme":"Near","words":["NEAR","CLOSE","NEARBY","ADJACENT","NEIGHBOURING"]},{"level":2,"theme":"Far","words":["FAR","DISTANT","REMOTE","FARAWAY","REMOVED"]},{"level":2,"theme":"Begin","words":["BEGIN","START","LAUNCH","COMMENCE","INITIATE"]},{"level":2,"theme":"End","words":["END","FINISH","COMPLETE","CONCLUDE","CEASE"]},{"level":2,"theme":"Build","words":["BUILD","CREATE","CONSTRUCT","ASSEMBLE","PRODUCE"]},{"level":2,"theme":"Break","words":["BREAK","SMASH","SHATTER","FRACTURE","DESTROY"]},{"level":2,"theme":"Fix","words":["FIX","RECTIFY","PATCH","OVERHAUL","REFURBISH"]},{"level":2,"theme":"Move","words":["MOVE","SHIFT","TRAVEL","RELOCATE","TRANSFER"]},{"level":2,"theme":"Throw","words":["THROW","TOSS","HURL","FLING","LAUNCH"]},{"level":2,"theme":"Grab","words":["GRAB","CLASP","NAB","CORRAL","CLENCH"]},{"level":2,"theme":"Look","words":["LOOK","GAZE","STARE","OBSERVE","WATCH"]},{"level":2,"theme":"Speak","words":["SPEAK","TALK","UTTER","EXPRESS","ANNOUNCE"]},{"level":2,"theme":"Shout","words":["SHOUT","HOLLER","BAWL","CRY","SHRIEK"]},{"level":2,"theme":"Whisper","words":["WHISPER","MURMUR","MUTTER","BREATHE","MUMBLE"]},{"level":2,"theme":"Help","words":["HELP","ASSIST","AID","SUPPORT","ENCOURAGE"]},{"level":2,"theme":"Hurt","words":["HURT","MAIM","BRUISE","AFFLICT","STING"]},{"level":2,"theme":"Love","words":["LOVE","ADULATE","IDOLISE","WORSHIP","CHERISH"]},{"level":2,"theme":"Hate","words":["HATE","ABOMINATE","REVILE","EXECRATE","LOATHE"]},{"level":2,"theme":"Want","words":["WANT","DESIRE","CRAVE","WISH","SEEK"]},{"level":2,"theme":"Think","words":["THINK","PONDER","REFLECT","CONSIDER","REASON"]},{"level":2,"theme":"Choose","words":["CHOOSE","SELECT","PICK","DECIDE","NOMINATE"]},{"level":2,"theme":"Find","words":["FIND","DISCOVER","LOCATE","UNCOVER","DETECT"]},{"level":2,"theme":"Hide","words":["HIDE","CONCEAL","DISGUISE","MASK","BURY"]},{"level":2,"theme":"Win","words":["WIN","SURPASS","OUTDO","OUTSTRIP","SURMOUNT"]},{"level":2,"theme":"Lose","words":["LOSE","FAIL","SURRENDER","FORFEIT","MISPLACE"]},{"level":2,"theme":"Show","words":["SHOW","REVEAL","DISPLAY","PRESENT","EXPOSE"]}]</script>
+  <script type="application/json" id="synonyms-data-level1">[{"level":1,"theme":"Happy","words":["HAPPY","JOYFUL","GLAD","CHEERFUL","PLEASED"]},{"level":1,"theme":"Sad","words":["SAD","UNHAPPY","GLOOMY","SORROWFUL","UPSET"]},{"level":1,"theme":"Angry","words":["ANGRY","MAD","FURIOUS","ANNOYED","CROSS"]},{"level":1,"theme":"Scared","words":["SCARED","AFRAID","FEARFUL","NERVOUS","ALARMED"]},{"level":1,"theme":"Brave","words":["BRAVE","BOLD","DARING","FEARLESS","HEROIC"]},{"level":1,"theme":"Smart","words":["SMART","CLEVER","BRIGHT","BRAINY","WISE"]},{"level":1,"theme":"Silly","words":["SILLY","FOOLISH","GOOFY","ABSURD","DAFT"]},{"level":1,"theme":"Fast","words":["FAST","QUICK","SPEEDY","RAPID","SWIFT"]},{"level":1,"theme":"Slow","words":["SLOW","SLUGGISH","LAZY","GRADUAL","TARDY"]},{"level":1,"theme":"Big","words":["BIG","LARGE","HUGE","GIANT","MASSIVE"]},{"level":1,"theme":"Small","words":["SMALL","TINY","LITTLE","MINI","PETITE"]},{"level":1,"theme":"Beautiful","words":["BEAUTIFUL","PRETTY","LOVELY","GORGEOUS","STUNNING"]},{"level":1,"theme":"Ugly","words":["UGLY","HIDEOUS","PLAIN","UNATTRACTIVE","UNSIGHTLY"]},{"level":1,"theme":"Rich","words":["RICH","WEALTHY","LOADED","AFFLUENT","WELLOFF"]},{"level":1,"theme":"Poor","words":["POOR","NEEDY","BROKE","PENNILESS","DESTITUTE"]},{"level":1,"theme":"Quiet","words":["QUIET","SILENT","HUSHED","MUTED","STILL"]},{"level":1,"theme":"Loud","words":["LOUD","NOISY","BOOMING","BLARING","ROWDY"]},{"level":1,"theme":"Tired","words":["TIRED","WEARY","SLEEPY","DRAINED","EXHAUSTED"]},{"level":1,"theme":"Strong","words":["STRONG","POWERFUL","STURDY","TOUGH","MIGHTY"]},{"level":1,"theme":"Weak","words":["WEAK","FRAIL","FEEBLE","FRAGILE","POWERLESS"]},{"level":1,"theme":"Clean","words":["CLEAN","SPOTLESS","TIDY","PURE","FRESH"]},{"level":1,"theme":"Dirty","words":["DIRTY","FILTHY","GRIMY","MUDDY","STAINED"]},{"level":1,"theme":"Old","words":["OLD","AGED","ANCIENT","ELDERLY","ANTIQUE"]},{"level":1,"theme":"New","words":["NEW","FRESH","MODERN","RECENT","NOVEL"]},{"level":1,"theme":"Kind","words":["KIND","CARING","GENTLE","THOUGHTFUL","HELPFUL"]},{"level":1,"theme":"Cruel","words":["CRUEL","MEAN","HARSH","NASTY","BRUTAL"]},{"level":1,"theme":"Honest","words":["HONEST","TRUTHFUL","SINCERE","FRANK","GENUINE"]},{"level":1,"theme":"False","words":["FALSE","FAKE","UNTRUE","PHONY","BOGUS"]},{"level":1,"theme":"Funny","words":["FUNNY","AMUSING","COMIC","HILARIOUS","WITTY"]},{"level":1,"theme":"Serious","words":["SERIOUS","SOLEMN","GRAVE","EARNEST","STERN"]},{"level":1,"theme":"Easy","words":["EASY","SIMPLE","PLAIN","BASIC","EFFORTLESS"]},{"level":1,"theme":"Hard","words":["HARD","DIFFICULT","TOUGH","TRICKY","COMPLEX"]},{"level":1,"theme":"Important","words":["IMPORTANT","VITAL","KEY","CRUCIAL","MAJOR"]},{"level":1,"theme":"Strange","words":["STRANGE","ODD","WEIRD","BIZARRE","UNUSUAL"]},{"level":1,"theme":"Normal","words":["NORMAL","USUAL","REGULAR","TYPICAL","COMMON"]},{"level":1,"theme":"Dangerous","words":["DANGEROUS","RISKY","UNSAFE","HARMFUL","PERILOUS"]},{"level":1,"theme":"Safe","words":["SAFE","SECURE","GUARDED","PROTECTED","HARMLESS"]},{"level":1,"theme":"Radiant","words":["BRIGHT","SHINING","GLOWING","RADIANT","VIVID"]},{"level":1,"theme":"Dark","words":["DARK","DIM","GLOOMY","SHADOWY","MURKY"]},{"level":1,"theme":"Hot","words":["HOT","WARM","HEATED","BOILING","SCORCHING"]},{"level":1,"theme":"Cold","words":["COLD","CHILLY","FREEZING","ICY","FROSTY"]},{"level":1,"theme":"Hungry","words":["HUNGRY","STARVING","FAMISHED","PECKISH","RAVENOUS"]},{"level":1,"theme":"Full","words":["FULL","STUFFED","SATISFIED","FILLED","PACKED"]},{"level":1,"theme":"Empty","words":["EMPTY","VACANT","BLANK","HOLLOW","BARE"]},{"level":1,"theme":"Crowded","words":["CROWDED","PACKED","FULL","JAMMED","BUSY"]},{"level":1,"theme":"Sharp","words":["CLEVER","SMART","SHARP","SHREWD","INTELLIGENT"]},{"level":1,"theme":"Lazy","words":["LAZY","IDLE","SLACK","INACTIVE","SLUGGISH"]},{"level":1,"theme":"Busy","words":["BUSY","ACTIVE","OCCUPIED","WORKING","ENGAGED"]},{"level":1,"theme":"Rude","words":["RUDE","IMPOLITE","CHEEKY","DISRESPECTFUL","CRUDE"]},{"level":1,"theme":"Polite","words":["POLITE","CIVIL","COURTEOUS","RESPECTFUL","GRACIOUS"]},{"level":1,"theme":"Calm","words":["CALM","PEACEFUL","RELAXED","TRANQUIL","STILL"]},{"level":1,"theme":"Wild","words":["WILD","FIERCE","SAVAGE","UNTAMED","RECKLESS"]},{"level":1,"theme":"Careful","words":["CAREFUL","CAUTIOUS","WARY","ALERT","WATCHFUL"]},{"level":1,"theme":"Careless","words":["CARELESS","SLOPPY","RASH","RECKLESS","HASTY"]},{"level":1,"theme":"Gifted","words":["BRIGHT","CLEVER","SMART","GIFTED","TALENTED"]},{"level":1,"theme":"Boring","words":["BORING","DULL","TEDIOUS","BLAND","TIRESOME"]},{"level":1,"theme":"Exciting","words":["EXCITING","THRILLING","LIVELY","GRIPPING","DRAMATIC"]},{"level":1,"theme":"Famous","words":["FAMOUS","KNOWN","NOTED","POPULAR","RENOWNED"]},{"level":1,"theme":"Hidden","words":["HIDDEN","SECRET","BURIED","CONCEALED","COVERED"]},{"level":1,"theme":"Clear","words":["CLEAR","OBVIOUS","PLAIN","EVIDENT","VISIBLE"]},{"level":1,"theme":"Confused","words":["CONFUSED","PUZZLED","BAFFLED","MIXEDUP","LOST"]},{"level":1,"theme":"Certain","words":["CERTAIN","SURE","POSITIVE","DEFINITE","ASSURED"]},{"level":1,"theme":"Lucky","words":["LUCKY","FORTUNATE","BLESSED","FAVOURED","CHARMED"]},{"level":1,"theme":"Unlucky","words":["UNLUCKY","CURSED","DOOMED","HAPLESS","LUCKLESS"]},{"level":1,"theme":"Neat","words":["NEAT","TIDY","ORDERLY","CLEAN","ARRANGED"]},{"level":1,"theme":"Messy","words":["MESSY","UNTIDY","SLOPPY","CHAOTIC","CLUTTERED"]},{"level":1,"theme":"Pointed","words":["SHARP","POINTED","KEEN","ACUTE","JAGGED"]},{"level":1,"theme":"Blunt","words":["BLUNT","DULL","FLAT","ROUNDED","POINTLESS"]},{"level":1,"theme":"Soft","words":["SOFT","GENTLE","SMOOTH","TENDER","MILD"]},{"level":1,"theme":"Rough","words":["ROUGH","COARSE","HARSH","BUMPY","RUGGED"]},{"level":1,"theme":"Wet","words":["WET","DAMP","MOIST","SOGGY","SOAKED"]},{"level":1,"theme":"Dry","words":["DRY","ARID","CRISP","PARCHED","WATERLESS"]},{"level":1,"theme":"Thin","words":["THIN","SLIM","SKINNY","NARROW","SLENDER"]},{"level":1,"theme":"Thick","words":["THICK","WIDE","BROAD","CHUNKY","BULKY"]},{"level":1,"theme":"Early","words":["EARLY","PROMPT","TIMELY","AHEAD","PREMATURE"]},{"level":1,"theme":"Late","words":["LATE","DELAYED","TARDY","OVERDUE","SLOW"]},{"level":1,"theme":"Near","words":["NEAR","CLOSE","NEARBY","ADJACENT","LOCAL"]},{"level":1,"theme":"Far","words":["FAR","DISTANT","REMOTE","AWAY","FAROFF"]},{"level":1,"theme":"Begin","words":["BEGIN","START","LAUNCH","COMMENCE","OPEN"]},{"level":1,"theme":"End","words":["END","FINISH","STOP","CLOSE","COMPLETE"]},{"level":1,"theme":"Build","words":["BUILD","MAKE","CREATE","CONSTRUCT","FORM"]},{"level":1,"theme":"Break","words":["BREAK","SMASH","CRACK","SHATTER","WRECK"]},{"level":1,"theme":"Fix","words":["FIX","REPAIR","MEND","RESTORE","CORRECT"]},{"level":1,"theme":"Move","words":["MOVE","SHIFT","TRAVEL","WANDER","ROAM"]},{"level":1,"theme":"Throw","words":["THROW","TOSS","HURL","FLING","PITCH"]},{"level":1,"theme":"Grab","words":["GRAB","SEIZE","SNATCH","GRASP","CLUTCH"]},{"level":1,"theme":"Look","words":["LOOK","GAZE","STARE","GLANCE","WATCH"]},{"level":1,"theme":"Speak","words":["SPEAK","TALK","SAY","CHAT","UTTER"]},{"level":1,"theme":"Shout","words":["SHOUT","YELL","SCREAM","ROAR","BELLOW"]},{"level":1,"theme":"Whisper","words":["WHISPER","MURMUR","MUTTER","BREATHE","HUSH"]},{"level":1,"theme":"Help","words":["HELP","AID","ASSIST","SUPPORT","GUIDE"]},{"level":1,"theme":"Hurt","words":["HURT","HARM","INJURE","WOUND","DAMAGE"]},{"level":1,"theme":"Love","words":["LOVE","ADORE","CHERISH","TREASURE","VALUE"]},{"level":1,"theme":"Hate","words":["HATE","DISLIKE","LOATHE","DETEST","DESPISE"]},{"level":1,"theme":"Want","words":["WANT","NEED","DESIRE","CRAVE","WISH"]},{"level":1,"theme":"Think","words":["THINK","PONDER","WONDER","REFLECT","CONSIDER"]},{"level":1,"theme":"Choose","words":["CHOOSE","PICK","SELECT","ELECT","DECIDE"]},{"level":1,"theme":"Find","words":["FIND","DISCOVER","LOCATE","UNCOVER","SPOT"]},{"level":1,"theme":"Hide","words":["HIDE","CONCEAL","MASK","COVER","BURY"]},{"level":1,"theme":"Win","words":["WIN","TRIUMPH","SUCCEED","PREVAIL","CONQUER"]}]</script>
+  <script>
+    (function () {
+      const LEVEL1_ROUNDS = JSON.parse(
+        document.getElementById("synonyms-data-level1").textContent.trim()
+      );
+      const LEVEL2_ROUNDS = JSON.parse(
+        document.getElementById("synonyms-data-level2").textContent.trim() || "[]"
+      );
+      const LEVEL3_ROUNDS = JSON.parse(
+        document.getElementById("synonyms-data-level3").textContent.trim() || "[]"
+      );
+      const LEVEL4_ROUNDS = JSON.parse(
+        document.getElementById("synonyms-data-level4").textContent.trim() || "[]"
+      );
+      const LEVEL5_ROUNDS = JSON.parse(
+        document.getElementById("synonyms-data-level5").textContent.trim() || "[]"
+      );
+
+      function hashString(s) {
+        let h = 5381;
+        for (let i = 0; i < s.length; i++) {
+          h = (h << 5) + h + s.charCodeAt(i);
+          h = h | 0;
+        }
+        return Math.abs(h);
+      }
+
+      function shuffleSeeded(arr, seedStr) {
+        let seed = hashString(seedStr) >>> 0;
+        function rnd() {
+          seed = (1664525 * seed + 1013904223) >>> 0;
+          return seed / 4294967296;
+        }
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(rnd() * (i + 1));
+          const t = a[i];
+          a[i] = a[j];
+          a[j] = t;
+        }
+        return a;
+      }
+
+      const ENDLESS_STORAGE_KEY = "synonyms-endless-v3";
+
+      /** Full run: sets of 5 (Level 1→5), aligned across pools. */
+      /** @type {{ level: number; theme: string; words: string[] }[]} */
+      let endlessDeck = [];
+      let endlessSeed = "";
+      let endlessPoolFingerprint = "";
+      let lifetimeScore = 0;
+
+      let roundIndex = 0;
+
+      function getPoolFingerprint() {
+        return [LEVEL1_ROUNDS, LEVEL2_ROUNDS, LEVEL3_ROUNDS, LEVEL4_ROUNDS, LEVEL5_ROUNDS]
+          .map(function (p) {
+            return p.length;
+          })
+          .join("-");
+      }
+
+      function totalSetsFromDeck(deck) {
+        return Math.floor(deck.length / 5);
+      }
+
+      function buildSetCycledDeck(seedStr) {
+        const pools = [LEVEL1_ROUNDS, LEVEL2_ROUNDS, LEVEL3_ROUNDS, LEVEL4_ROUNDS, LEVEL5_ROUNDS];
+        const n = Math.min.apply(
+          null,
+          pools.map(function (p) {
+            return p.length;
+          })
+        );
+        if (n <= 0) return [];
+        const shuffledByLevel = pools.map(function (pool, idx) {
+          return shuffleSeeded(pool.slice(0, n), seedStr + "-L" + (idx + 1));
+        });
+        const deck = [];
+        for (let s = 0; s < n; s++) {
+          for (let L = 0; L < 5; L++) {
+            deck.push(shuffledByLevel[L][s]);
+          }
+        }
+        return deck;
+      }
+
+      function loadEndlessState() {
+        try {
+          const raw = localStorage.getItem(ENDLESS_STORAGE_KEY);
+          if (!raw) return null;
+          const o = JSON.parse(raw);
+          return {
+            seed: typeof o.seed === "string" ? o.seed : "",
+            puzzleIndex: typeof o.puzzleIndex === "number" ? o.puzzleIndex : 0,
+            totalScore: typeof o.totalScore === "number" ? o.totalScore : 0,
+            setHints: typeof o.setHints === "number" ? o.setHints : 0,
+            poolRevision:
+              typeof o.poolRevision === "string"
+                ? o.poolRevision
+                : typeof o.poolRevision === "number"
+                  ? String(o.poolRevision)
+                  : "",
+          };
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function saveEndlessState() {
+        try {
+          localStorage.setItem(
+            ENDLESS_STORAGE_KEY,
+            JSON.stringify({
+              seed: endlessSeed,
+              puzzleIndex: roundIndex,
+              totalScore: lifetimeScore,
+              setHints: hintsThisSet,
+              poolRevision: endlessPoolFingerprint,
+            })
+          );
+        } catch (e) {}
+      }
+
+      function ensureEndlessDeck() {
+        const fp = getPoolFingerprint();
+        let st = loadEndlessState();
+        if (!st) {
+          st = { seed: "", puzzleIndex: 0, totalScore: 0, setHints: 0, poolRevision: "" };
+        }
+        if (!st.seed) {
+          st.seed =
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : "syn-" + Date.now() + "-" + Math.floor(Math.random() * 1e9);
+        }
+        if (st.poolRevision !== fp) {
+          st.puzzleIndex = 0;
+          st.poolRevision = fp;
+          st.setHints = 0;
+        }
+        endlessSeed = st.seed;
+        endlessPoolFingerprint = fp;
+        endlessDeck = buildSetCycledDeck(endlessSeed + "|fp=" + fp);
+        lifetimeScore = st.totalScore;
+        roundIndex = Math.min(Math.max(0, st.puzzleIndex), endlessDeck.length);
+        hintsThisSet = typeof st.setHints === "number" ? st.setHints : 0;
+        saveEndlessState();
+      }
+
+      function startNewShuffleKeepScore() {
+        endlessSeed =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : "syn-" + Date.now() + "-" + Math.floor(Math.random() * 1e9);
+        roundIndex = 0;
+        endlessPoolFingerprint = getPoolFingerprint();
+        endlessDeck = buildSetCycledDeck(endlessSeed + "|fp=" + endlessPoolFingerprint);
+        saveEndlessState();
+        buildRound();
+      }
+
+      /**
+       * Fixed answer rack width (tiles per row). Unused positions show dim pads.
+       * Word length must stay ≤ this (matches longest slot run).
+       */
+      const SLOT_GRID = 15;
+      const MAX_WORD_LEN = SLOT_GRID;
+
+      (function validateRoundWords() {
+        [LEVEL1_ROUNDS, LEVEL2_ROUNDS, LEVEL3_ROUNDS, LEVEL4_ROUNDS, LEVEL5_ROUNDS].forEach(function (pool) {
+          pool.forEach(function (round) {
+            round.words.forEach(function (w) {
+              if (w.length > MAX_WORD_LEN) {
+                console.warn(
+                  '[Synonyms] Word "' +
+                    w +
+                    '" (' +
+                    w.length +
+                    ') theme "' +
+                    round.theme +
+                    '" L' +
+                    round.level +
+                    " exceeds MAX_WORD_LEN (" +
+                    MAX_WORD_LEN +
+                    ")."
+                );
+              }
+            });
+          });
+        });
+      })();
+
+      let moves = 0;
+      let cluesUsed = 0;
+      let roundComplete = false;
+      let roundStartMs = 0;
+      let elapsedAtFinishSec = 0;
+      /** @type {string|null} */
+      let selectedLetterId = null;
+      let pendingSetCelebration = false;
+      let lastRoundPrevLifetime = 0;
+      /** Hints used across the five puzzles of the current set (resets each new set). */
+      let hintsThisSet = 0;
+
+      const PLAY_URL = "https://planomy.github.io/synonyms";
+
+      /** Shown on the set tally screen only when the completed set used zero hints — encourages sharing. */
+      const ZERO_HINT_SHARE_NUDGES = [
+        "Brag a little — you've earned it. Tap Share.",
+        "No hints across five puzzles? Someone needs to hear about this.",
+        "Your group chat wants receipts. Hit Share.",
+        "That was a clean run — let the world know (or at least one friend).",
+        "No hints, all vocabulary. Drop it on Share.",
+        "If you don't share it, did it even happen?",
+        "Somewhere, a hint button feels neglected. Celebrate with Share.",
+        "Five levels, zero shortcuts. Worth a humble flex.",
+        "Tell someone who'll be impressed — or mildly annoyed.",
+        "Word-nerd achievement unlocked. Share the proof.",
+        "They'll never believe you without the tap below.",
+        "Pure brain power. Give it a caption via Share.",
+        "Your total score is glowing — show it off.",
+        "Spread the link; recruit another solver.",
+        "That streak deserves an audience. Share when you're ready.",
+      ];
+
+      function randomZeroHintShareNudge() {
+        const arr = ZERO_HINT_SHARE_NUDGES;
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      const board = document.getElementById("board");
+      const moveCountEl = document.getElementById("moveCount");
+      const scoreDisplayEl = document.getElementById("scoreDisplay");
+      const levelIndicatorEl = document.getElementById("levelIndicator");
+      const dailyProgressEl = document.getElementById("dailyProgress");
+      const hintsHudEl = document.getElementById("hintsHud");
+      const themeRevealEl = document.getElementById("themeReveal");
+      const winOverlay = document.getElementById("winOverlay");
+      const finalScoreEl = document.getElementById("finalScore");
+      const winMessageEl = document.getElementById("winMessage");
+      const nextRoundBtn = document.getElementById("nextRoundBtn");
+      const setCompleteOverlay = document.getElementById("setCompleteOverlay");
+      const setTallyScoreEl = document.getElementById("setTallyScore");
+      const setShareBtn = document.getElementById("setShareBtn");
+      const setZeroHintNudgeEl = document.getElementById("setZeroHintNudge");
+      const setZeroHintMsgEl = document.getElementById("setZeroHintMsg");
+      const setContinueBtn = document.getElementById("setContinueBtn");
+      const particlesEl = document.getElementById("particles");
+
+      /** Current round (for keyboard handler). */
+      let roundCtx = {
+        words: /** @type {string[]} */ ([]),
+        theme: "",
+        level: 1,
+      };
+
+      function shuffle(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
+
+      function minMovesPar(words) {
+        return words.reduce((s, w) => s + w.length, 0);
+      }
+
+      const HINT_COST = 290;
+
+      function totalHintPenalty() {
+        return cluesUsed * HINT_COST;
+      }
+
+      function updateHintsHud() {
+        if (cluesUsed === 0) hintsHudEl.textContent = "0 hints";
+        else if (cluesUsed === 1) hintsHudEl.textContent = "1 hint";
+        else hintsHudEl.textContent = cluesUsed + " hints";
+      }
+
+      /**
+       * Moves vs letter-count par, round streak, minus flat hint penalty.
+       */
+      function computeScore(words, moveCount, hintPenalty) {
+        const par = minMovesPar(words);
+        const streak = roundIndex * 120;
+        if (moveCount <= 0) {
+          return Math.max(150, 720 + streak - hintPenalty);
+        }
+        const moveRatio = Math.min(1, par / moveCount);
+        const base = Math.round(4000 * moveRatio * moveRatio);
+        return Math.max(150, base + streak - hintPenalty);
+      }
+
+      /** Count up the big score on the win modal only (HUD updates when finished). */
+      function animateScoreOnSplash(modalEl, target, durationMs, onDone) {
+        const from = Math.max(
+          0,
+          Math.min(target - 1, Math.floor(target * 0.1 + 50 + Math.min(180, target * 0.2)))
+        );
+        const t0 = performance.now();
+        modalEl.classList.add("is-rolling");
+        modalEl.textContent = String(from);
+        function tick(now) {
+          const u = Math.min(1, (now - t0) / durationMs);
+          const eased = 1 - Math.pow(1 - u, 4);
+          modalEl.textContent = String(Math.round(from + (target - from) * eased));
+          if (u < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            modalEl.textContent = String(target);
+            modalEl.classList.remove("is-rolling");
+            if (onDone) onDone();
+          }
+        }
+        requestAnimationFrame(tick);
+      }
+
+      /** Explicit range roll (e.g. lifetime tally on set complete). */
+      function animateNumberFromTo(modalEl, fromVal, toVal, durationMs, onDone) {
+        const from = Math.round(fromVal);
+        const to = Math.round(toVal);
+        const t0 = performance.now();
+        modalEl.classList.add("is-rolling");
+        modalEl.textContent = String(from);
+        function tick(now) {
+          const u = Math.min(1, (now - t0) / durationMs);
+          const eased = 1 - Math.pow(1 - u, 4);
+          modalEl.textContent = String(Math.round(from + (to - from) * eased));
+          if (u < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            modalEl.textContent = String(to);
+            modalEl.classList.remove("is-rolling");
+            if (onDone) onDone();
+          }
+        }
+        requestAnimationFrame(tick);
+      }
+
+      /** Message body only — URL is passed separately in navigator.share({ url }) to avoid duplicate links. */
+      function buildSetShareBody() {
+        const zeroHints = hintsThisSet === 0;
+        const headline = zeroHints
+          ? "I solved this set with zero hints!"
+          : "I cleared a set in Synonyms!";
+        return headline + " Total score: " + lifetimeScore + " pts.";
+      }
+
+      /** Full text when copying (single URL, no separate Web Share API url field). */
+      function buildSetShareClipboardText() {
+        return buildSetShareBody() + "\n" + PLAY_URL;
+      }
+
+      function copySetShareFallback(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(
+            function () {
+              if (setShareBtn) {
+                var prev = setShareBtn.textContent;
+                setShareBtn.textContent = "Copied";
+                setTimeout(function () {
+                  setShareBtn.textContent = prev;
+                }, 1600);
+              }
+            },
+            function () {
+              window.prompt("Copy your message:", text);
+            }
+          );
+        } else {
+          window.prompt("Copy your message:", text);
+        }
+      }
+
+      function shareSetComplete() {
+        const body = buildSetShareBody();
+        const clipboardText = buildSetShareClipboardText();
+        if (navigator.share) {
+          navigator
+            .share({ title: "Synonyms", text: body, url: PLAY_URL })
+            .catch(function () {
+              copySetShareFallback(clipboardText);
+            });
+        } else {
+          copySetShareFallback(clipboardText);
+        }
+      }
+
+      function openSetCompleteCelebration() {
+        if (setZeroHintNudgeEl && setZeroHintMsgEl) {
+          if (hintsThisSet === 0) {
+            setZeroHintMsgEl.textContent = randomZeroHintShareNudge();
+            setZeroHintNudgeEl.hidden = false;
+          } else {
+            setZeroHintMsgEl.textContent = "";
+            setZeroHintNudgeEl.hidden = true;
+          }
+        }
+        burstConfetti();
+        setTimeout(function () {
+          burstConfetti();
+        }, 200);
+        setTallyScoreEl.textContent = String(lastRoundPrevLifetime);
+        setCompleteOverlay.classList.add("open");
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            animateNumberFromTo(setTallyScoreEl, lastRoundPrevLifetime, lifetimeScore, 2200, function () {
+              setContinueBtn.focus();
+            });
+          });
+        });
+      }
+
+      function formatClock(sec) {
+        const s = Math.max(0, sec);
+        const m = Math.floor(s / 60);
+        const r = s - m * 60;
+        const tenth = Math.floor((r % 1) * 10);
+        const whole = Math.floor(r);
+        return m + ":" + String(whole).padStart(2, "0") + "." + tenth;
+      }
+
+      function beginRoundTiming() {
+        roundStartMs = performance.now();
+      }
+
+      function burstConfetti() {
+        const colors = ["#5ee4d4", "#f4d06f", "#7ddf8e", "#ff8b7a", "#a78bfa"];
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 3;
+        for (let i = 0; i < 48; i++) {
+          const dot = document.createElement("span");
+          dot.className = "particle";
+          dot.style.left = cx + "px";
+          dot.style.top = cy + "px";
+          dot.style.background = colors[i % colors.length];
+          const dx = (Math.random() - 0.5) * 420;
+          const dy = Math.random() * 320 + 80;
+          dot.style.setProperty("--dx", dx + "px");
+          dot.style.setProperty("--dy", dy + "px");
+          particlesEl.appendChild(dot);
+          setTimeout(() => dot.remove(), 1300);
+        }
+      }
+
+      function clearSelection() {
+        selectedLetterId = null;
+        document.querySelectorAll(".letter.selected").forEach((el) => el.classList.remove("selected"));
+      }
+
+      function bumpMoves() {
+        moves++;
+        moveCountEl.textContent = String(moves);
+      }
+
+      function allRowsSolved() {
+        return document.querySelectorAll(".row-wrap").length === document.querySelectorAll(".row-wrap.solved").length;
+      }
+
+      function checkRow(rowEl, word) {
+        const slots = rowEl.querySelectorAll(".slot.slot-active");
+        let filled = "";
+        slots.forEach((s) => {
+          filled += s.textContent.trim() || "";
+        });
+        if (filled.length !== word.length) return false;
+        if (filled !== word) return false;
+        if (!rowEl.classList.contains("solved")) {
+          rowEl.classList.add("solved");
+        }
+        return true;
+      }
+
+      function tryFinishRound(words, theme) {
+        if (roundComplete || !allRowsSolved()) return;
+        roundComplete = true;
+        elapsedAtFinishSec = (performance.now() - roundStartMs) / 1000;
+        burstConfetti();
+        const hintPen = totalHintPenalty();
+        const score = computeScore(words, moves, hintPen);
+        lastRoundPrevLifetime = lifetimeScore;
+        lifetimeScore += score;
+        pendingSetCelebration = endlessDeck.length > 0 && (roundIndex + 1) % 5 === 0;
+        saveEndlessState();
+        const par = minMovesPar(words);
+        scoreDisplayEl.textContent = "\u2014";
+        finalScoreEl.textContent = "0";
+        themeRevealEl.hidden = false;
+        themeRevealEl.innerHTML =
+          "These were synonyms of<br /><strong>" +
+          escapeHtml(theme) +
+          "</strong><span class=\"level-line\">Level " +
+          escapeHtml(String(roundCtx.level || 1)) +
+          "</span>";
+        const hintLine =
+          cluesUsed === 0
+            ? "No hints used."
+            : "<strong>" +
+              cluesUsed +
+              "</strong> hint" +
+              (cluesUsed === 1 ? "" : "s") +
+              " (&minus;<strong>" +
+              hintPen +
+              "</strong> pts).";
+        winMessageEl.innerHTML =
+          "<strong>" +
+          moves +
+          "</strong> moves &middot; par <strong>" +
+          par +
+          "</strong><br />Time: <strong>" +
+          formatClock(elapsedAtFinishSec) +
+          "</strong> (not scored)<br />" +
+          hintLine;
+        const runLen = endlessDeck.length;
+        const isLastRound = runLen > 0 && roundIndex >= runLen - 1;
+        nextRoundBtn.textContent = isLastRound ? "Done" : "Next round";
+        winOverlay.classList.add("open");
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            animateScoreOnSplash(finalScoreEl, score, 1650, function () {
+              scoreDisplayEl.textContent = String(lifetimeScore);
+              winOverlay.querySelector(".btn").focus();
+            });
+          });
+        });
+      }
+
+      function escapeHtml(s) {
+        return s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function returnLetterFromSlot(rowWrap, slotEl) {
+        if (!slotEl.classList.contains("filled")) return;
+        const ch = slotEl.textContent;
+        const tray = rowWrap.querySelector(".letter-tray");
+        const poolBtn = document.createElement("button");
+        poolBtn.type = "button";
+        poolBtn.className = "letter";
+        poolBtn.textContent = ch;
+        const rid = "r" + rowWrap.dataset.row + "-return-" + Math.random().toString(36).slice(2, 8);
+        poolBtn.dataset.id = rid;
+        poolBtn.dataset.char = ch;
+        poolBtn.dataset.row = rowWrap.dataset.row || "";
+        poolBtn.setAttribute("aria-label", "Letter " + ch);
+        tray.appendChild(poolBtn);
+        slotEl.textContent = "";
+        slotEl.classList.remove("filled", "slot-from-hint");
+        slotEl.classList.add("empty");
+        delete slotEl.dataset.fromHint;
+        slotEl.setAttribute("aria-label", "Slot " + (Number(slotEl.dataset.index) + 1) + " empty");
+        rowWrap.classList.remove("solved");
+        bumpMoves();
+        clearSelection();
+        syncHintButtons();
+      }
+
+      /**
+       * @param {HTMLElement|null} specificSlot empty slot from a tap, or null for first empty (typing).
+       */
+      function placeLetterFromTray(rowWrap, letterBtn, specificSlot) {
+        const word = rowWrap.dataset.word || "";
+        const slotEl =
+          specificSlot &&
+          specificSlot.classList.contains("slot-active") &&
+          specificSlot.classList.contains("empty")
+            ? specificSlot
+            : rowWrap.querySelector(".slot.slot-active.empty");
+        if (!slotEl || letterBtn.classList.contains("used")) return;
+        letterBtn.classList.add("used");
+        letterBtn.classList.remove("selected");
+        selectedLetterId = null;
+        slotEl.textContent = letterBtn.textContent;
+        slotEl.classList.add("filled");
+        slotEl.classList.remove("empty");
+        slotEl.setAttribute(
+          "aria-label",
+          "Slot " + (Number(slotEl.dataset.index) + 1) + ": " + letterBtn.textContent
+        );
+        bumpMoves();
+        checkRow(rowWrap, word);
+        syncHintButtons();
+        tryFinishRound(roundCtx.words, roundCtx.theme);
+      }
+
+      function recallLastFilled(rowWrap) {
+        const slots = rowWrap.querySelectorAll(".slot.slot-active");
+        for (let i = slots.length - 1; i >= 0; i--) {
+          if (slots[i].classList.contains("filled")) {
+            returnLetterFromSlot(rowWrap, slots[i]);
+            return;
+          }
+        }
+      }
+
+      function canApplyHint(rowWrap) {
+        if (roundComplete || rowWrap.classList.contains("solved")) return false;
+        const word = rowWrap.dataset.word || "";
+        const slots = rowWrap.querySelectorAll(".slot.slot-active");
+        const tray = rowWrap.querySelector(".letter-tray");
+        if (!tray) return false;
+        for (let i = 0; i < slots.length; i++) {
+          if (!slots[i].classList.contains("empty")) continue;
+          const need = word[i];
+          const letters = tray.querySelectorAll(".letter:not(.used)");
+          for (let j = 0; j < letters.length; j++) {
+            if (letters[j].textContent === need) return true;
+          }
+          return false;
+        }
+        return false;
+      }
+
+      function syncHintButtons() {
+        document.querySelectorAll(".row-wrap").forEach(function (rw) {
+          const btn = rw.querySelector(".hint-btn");
+          if (!btn) return;
+          const ok = canApplyHint(rw);
+          btn.disabled = !ok;
+          btn.textContent = "Hint";
+        });
+      }
+
+      function applyHint(rowWrap) {
+        if (roundComplete || rowWrap.classList.contains("solved")) return;
+        const word = rowWrap.dataset.word || "";
+        const slots = rowWrap.querySelectorAll(".slot.slot-active");
+        const tray = rowWrap.querySelector(".letter-tray");
+        if (!tray) return;
+        let targetSlot = null;
+        let idx = -1;
+        for (let i = 0; i < slots.length; i++) {
+          if (slots[i].classList.contains("empty")) {
+            targetSlot = slots[i];
+            idx = i;
+            break;
+          }
+        }
+        if (!targetSlot || idx < 0) return;
+        const need = word[idx];
+        const letters = tray.querySelectorAll(".letter:not(.used)");
+        let btn = null;
+        for (let j = 0; j < letters.length; j++) {
+          if (letters[j].textContent === need) {
+            btn = letters[j];
+            break;
+          }
+        }
+        if (!btn) return;
+        cluesUsed++;
+        hintsThisSet++;
+        saveEndlessState();
+        updateHintsHud();
+        btn.classList.add("used");
+        btn.classList.remove("selected");
+        selectedLetterId = null;
+        clearSelection();
+        targetSlot.textContent = need;
+        targetSlot.classList.add("filled", "slot-from-hint");
+        targetSlot.classList.remove("empty");
+        targetSlot.dataset.fromHint = "1";
+        targetSlot.setAttribute("aria-label", "Slot " + (idx + 1) + ": " + need + " (hint)");
+        checkRow(rowWrap, word);
+        syncHintButtons();
+        tryFinishRound(roundCtx.words, roundCtx.theme);
+      }
+
+      document.addEventListener(
+        "keydown",
+        function (e) {
+          if (roundComplete) return;
+          if (winOverlay.classList.contains("open")) return;
+          if (setCompleteOverlay.classList.contains("open")) return;
+          const wrap = board.querySelector(".row-wrap:focus-within");
+          if (!wrap) return;
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+          if (e.key === "Backspace") {
+            e.preventDefault();
+            recallLastFilled(wrap);
+            return;
+          }
+
+          if (e.key.length !== 1) return;
+          const key = e.key.toUpperCase();
+          if (key < "A" || key > "Z") return;
+          e.preventDefault();
+          const letters = wrap.querySelectorAll(".letter:not(.used)");
+          for (let k = 0; k < letters.length; k++) {
+            if (letters[k].textContent === key) {
+              placeLetterFromTray(wrap, letters[k], null);
+              return;
+            }
+          }
+        },
+        true
+      );
+
+      function showCollectionComplete() {
+        roundComplete = true;
+        board.innerHTML =
+          "<div class=\"daily-complete\"><h3>Collection complete</h3><p>You solved all <strong>" +
+          endlessDeck.length +
+          "</strong> puzzles.</p><p style=\"margin-top:0.65rem\">Total score: <strong>" +
+          lifetimeScore +
+          "</strong></p><button type=\"button\" class=\"replay-btn\" id=\"replayShuffleBtn\">New shuffle</button></div>";
+        board.onclick = null;
+        levelIndicatorEl.textContent = "Complete";
+        dailyProgressEl.textContent =
+          "Set " + totalSetsFromDeck(endlessDeck) + " / " + totalSetsFromDeck(endlessDeck);
+        const replay = board.querySelector("#replayShuffleBtn");
+        if (replay) {
+          replay.addEventListener("click", function () {
+            startNewShuffleKeepScore();
+          });
+        }
+        saveEndlessState();
+      }
+
+      function buildRound() {
+        ensureEndlessDeck();
+
+        roundComplete = false;
+        moves = 0;
+        cluesUsed = 0;
+        selectedLetterId = null;
+        elapsedAtFinishSec = 0;
+        moveCountEl.textContent = "0";
+        scoreDisplayEl.textContent = endlessDeck.length ? String(lifetimeScore) : "\u2014";
+        updateHintsHud();
+        themeRevealEl.hidden = true;
+        themeRevealEl.textContent = "";
+        nextRoundBtn.textContent = "Next round";
+
+        if (!endlessDeck.length) {
+          levelIndicatorEl.textContent = "\u2014";
+          dailyProgressEl.textContent = "";
+          board.innerHTML =
+            "<p style=\"padding:1rem;text-align:center\">No puzzle rounds loaded.</p>";
+          board.onclick = null;
+          return;
+        }
+
+        if (roundIndex >= endlessDeck.length) {
+          showCollectionComplete();
+          return;
+        }
+
+        if (roundIndex % 5 === 0) {
+          hintsThisSet = 0;
+        }
+
+        saveEndlessState();
+
+        const data = endlessDeck[roundIndex];
+        roundCtx = {
+          words: data.words,
+          theme: data.theme,
+          level: typeof data.level === "number" ? data.level : 1,
+        };
+        levelIndicatorEl.textContent = "Level " + roundCtx.level;
+        const ts = totalSetsFromDeck(endlessDeck);
+        dailyProgressEl.textContent =
+          "Set " + (ts ? Math.floor(roundIndex / 5) + 1 : 0) + " / " + (ts || 0);
+        board.innerHTML = "";
+        beginRoundTiming();
+
+        data.words.forEach((word, rowIdx) => {
+          const letters = shuffle(word.split(""));
+          const wrap = document.createElement("div");
+          wrap.className = "row-wrap";
+          wrap.tabIndex = 0;
+          wrap.setAttribute("role", "group");
+          wrap.setAttribute(
+            "aria-label",
+            "Word " + (rowIdx + 1) + " — click this frame to focus, then type letters A–Z, or use tiles below."
+          );
+          wrap.dataset.word = word;
+          wrap.dataset.row = String(rowIdx);
+
+          wrap.addEventListener("click", function (ev) {
+            if (ev.target === wrap) wrap.focus();
+          });
+          wrap.addEventListener("mousedown", function (ev) {
+            if (roundComplete) return;
+            if (!/** @type {HTMLElement} */ (ev.target).closest("button")) {
+              wrap.focus({ preventScroll: true });
+            }
+          });
+          wrap.addEventListener("focusin", function () {
+            if (roundComplete) return;
+            wrap.classList.add("row-active");
+          });
+          wrap.addEventListener("focusout", function (ev) {
+            const next = /** @type {FocusEvent} */ (ev).relatedTarget;
+            if (!next || !wrap.contains(next)) {
+              wrap.classList.remove("row-active");
+            }
+          });
+
+          const tray = document.createElement("div");
+          tray.className = "letter-tray";
+          tray.setAttribute("role", "group");
+          tray.setAttribute("aria-label", "Scrambled letters");
+
+          letters.forEach((ch, i) => {
+            const id = "r" + rowIdx + "-l" + i + "-" + ch + "-" + Math.random().toString(36).slice(2, 7);
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "letter";
+            btn.textContent = ch;
+            btn.dataset.id = id;
+            btn.dataset.char = ch;
+            btn.dataset.row = String(rowIdx);
+            btn.setAttribute("aria-label", "Letter " + ch);
+            tray.appendChild(btn);
+          });
+
+          const slotsRow = document.createElement("div");
+          slotsRow.className = "slots";
+          slotsRow.setAttribute("role", "group");
+          slotsRow.setAttribute("aria-label", "Answer slots");
+
+          const wordLen = word.length;
+          const leftPadCount = Math.floor((SLOT_GRID - wordLen) / 2);
+          for (let i = 0; i < SLOT_GRID; i++) {
+            if (i < leftPadCount || i >= leftPadCount + wordLen) {
+              const pad = document.createElement("span");
+              pad.className = "slot slot-pad";
+              pad.setAttribute("aria-hidden", "true");
+              slotsRow.appendChild(pad);
+            } else {
+              const wi = i - leftPadCount;
+              const slot = document.createElement("button");
+              slot.type = "button";
+              slot.className = "slot slot-active empty";
+              slot.dataset.index = String(wi);
+              slot.dataset.row = String(rowIdx);
+              slot.setAttribute("aria-label", "Slot " + (wi + 1) + " empty");
+              slotsRow.appendChild(slot);
+            }
+          }
+
+          const rowHead = document.createElement("div");
+          rowHead.className = "row-head";
+          const hintBtn = document.createElement("button");
+          hintBtn.type = "button";
+          hintBtn.className = "hint-btn";
+          hintBtn.setAttribute("aria-label", "Reveal the next letter (reduces final score)");
+          hintBtn.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            applyHint(wrap);
+          });
+          rowHead.appendChild(hintBtn);
+
+          const inner = document.createElement("div");
+          inner.className = "row-inner";
+          inner.appendChild(slotsRow);
+          inner.appendChild(tray);
+          wrap.appendChild(rowHead);
+          wrap.appendChild(inner);
+          board.appendChild(wrap);
+        });
+
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            board.querySelectorAll(".row-inner").forEach(function (inner) {
+              const sr = inner.querySelector(".slots");
+              if (sr) {
+                inner.style.width = Math.ceil(sr.getBoundingClientRect().width) + "px";
+              }
+            });
+            syncHintButtons();
+          });
+        });
+
+        board.onclick = function (e) {
+          if (roundComplete) return;
+          const t = /** @type {HTMLElement} */ (e.target);
+          const letterEl = t.closest(".letter");
+          const slotEl = t.closest(".slot.slot-active");
+
+          if (letterEl && !letterEl.classList.contains("used")) {
+            const same = letterEl.classList.contains("selected");
+            clearSelection();
+            if (!same) {
+              letterEl.classList.add("selected");
+              selectedLetterId = letterEl.dataset.id || null;
+            }
+            return;
+          }
+
+          if (slotEl && wrapFor(slotEl)) {
+            const rowWrap = wrapFor(slotEl);
+            const word = rowWrap.dataset.word || "";
+
+            if (slotEl.classList.contains("filled")) {
+              returnLetterFromSlot(rowWrap, slotEl);
+              return;
+            }
+
+            if (slotEl.classList.contains("empty") && selectedLetterId) {
+              const selected = document.querySelector('.letter.selected[data-row="' + rowWrap.dataset.row + '"]');
+              if (!selected) {
+                clearSelection();
+                return;
+              }
+              placeLetterFromTray(rowWrap, selected, slotEl);
+            }
+          }
+        };
+      }
+
+      function wrapFor(el) {
+        return el.closest(".row-wrap");
+      }
+
+      nextRoundBtn.addEventListener("click", function () {
+        winOverlay.classList.remove("open");
+        if (roundIndex >= endlessDeck.length) return;
+        if (pendingSetCelebration) {
+          openSetCompleteCelebration();
+          return;
+        }
+        roundIndex++;
+        saveEndlessState();
+        buildRound();
+      });
+
+      setShareBtn.addEventListener("click", function () {
+        shareSetComplete();
+      });
+
+      setContinueBtn.addEventListener("click", function () {
+        setCompleteOverlay.classList.remove("open");
+        pendingSetCelebration = false;
+        if (roundIndex >= endlessDeck.length) return;
+        roundIndex++;
+        saveEndlessState();
+        buildRound();
+      });
+
+      buildRound();
+    })();
+  </script>
+</body>
+</html>
