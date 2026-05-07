@@ -1261,13 +1261,13 @@
       z-index: 116;
     }
 
-    /* Radial fog puff: tight at nucleus, expands outward and dissipates (matches electron anchor ~30vh). */
+    /* Radial fog puff: tight at nucleus; position set via --cele-anchor-* from JS (modal center or visual viewport). */
     .celebration-particles::before,
     .celebration-particles::after {
       content: "";
       position: absolute;
-      left: 50%;
-      top: 30%;
+      left: var(--cele-anchor-x, 50%);
+      top: var(--cele-anchor-y, 50%);
       width: 120vmax;
       height: 120vmax;
       margin-left: -60vmax;
@@ -1959,7 +1959,9 @@
       const SESSION_SETS_CLEARED_KEY = "synonyms-session-sets-v1";
 
       function clampLifetimeScore() {
-        lifetimeScore = Math.min(Math.max(0, lifetimeScore), MAX_LIFETIME_SCORE);
+        var n = Number(lifetimeScore);
+        if (!Number.isFinite(n)) n = 0;
+        lifetimeScore = Math.min(Math.max(0, Math.round(n)), MAX_LIFETIME_SCORE);
       }
 
       /** Full run: sets of 5 (Level 1→5), aligned across pools. */
@@ -2015,7 +2017,8 @@
           return {
             seed: typeof o.seed === "string" ? o.seed : "",
             puzzleIndex: typeof o.puzzleIndex === "number" ? o.puzzleIndex : 0,
-            totalScore: typeof o.totalScore === "number" ? o.totalScore : 0,
+            totalScore:
+              typeof o.totalScore === "number" && Number.isFinite(o.totalScore) ? o.totalScore : 0,
             setHints: typeof o.setHints === "number" ? o.setHints : 0,
             blitzSets: typeof o.blitzSets === "number" ? o.blitzSets : 0,
             pureSets: typeof o.pureSets === "number" ? o.pureSets : 0,
@@ -2588,6 +2591,24 @@
         }
       }
 
+      /** Center of the “atom” burst: middle of the open celebration modal, else visual viewport (handles iPad zoom). */
+      function getCelebrationAnchorPx() {
+        const vv = window.visualViewport;
+        const fbCx = vv ? vv.offsetLeft + vv.width * 0.5 : window.innerWidth * 0.5;
+        const fbCy = vv ? vv.offsetTop + vv.height * 0.5 : window.innerHeight * 0.5;
+        const setModal = document.querySelector("#setCompleteOverlay.open .modal-set-celebrate");
+        if (setModal) {
+          const r = setModal.getBoundingClientRect();
+          return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+        }
+        const winModal = document.querySelector("#winOverlay.open .modal");
+        if (winModal) {
+          const r = winModal.getBoundingClientRect();
+          return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+        }
+        return { cx: fbCx, cy: fbCy };
+      }
+
       /**
        * Few orbiting “electrons” with fading trails + mist (layer above round & set overlays).
        * @param {boolean} isFast
@@ -2600,6 +2621,9 @@
         intensityScale = intensityScale == null ? 1 : intensityScale;
         options = options || {};
         const liftAboveSet = !!options.liftAboveSet;
+        const anchor = getCelebrationAnchorPx();
+        celebrationParticlesEl.style.setProperty("--cele-anchor-x", anchor.cx + "px");
+        celebrationParticlesEl.style.setProperty("--cele-anchor-y", anchor.cy + "px");
         if (liftAboveSet) {
           celebrationParticlesEl.classList.add("celebration-particles--lifted");
           if (celebrationLiftResetTimer) window.clearTimeout(celebrationLiftResetTimer);
@@ -2706,8 +2730,8 @@
           palette = [bioTeal, bioCyan, bioBlue, bioViolet, bioSea];
         }
 
-        const cx = window.innerWidth / 2;
-        const cy = window.innerHeight * 0.3;
+        const cx = anchor.cx;
+        const cy = anchor.cy;
         const stagger = reduceMotion ? 0.04 : 0.055;
         let orbitEndSec = 0;
         for (let i = 0; i < chosen.length; i++) {
@@ -3587,6 +3611,9 @@
         winOverlay.classList.remove("open", "win-overlay--juice");
         const winModalJuice = winOverlay.querySelector(".modal");
         if (winModalJuice) winModalJuice.classList.remove("modal--juice-burst");
+        if (endlessDeck.length) {
+          scoreDisplayEl.textContent = String(lifetimeScore);
+        }
         if (roundIndex >= endlessDeck.length) return;
         if (pendingSetCelebration) {
           openSetCompleteCelebration();
