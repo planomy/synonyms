@@ -967,6 +967,32 @@
         0 12px 40px rgba(0, 0, 0, 0.45);
     }
 
+    .round-earn-toast--milestone {
+      max-width: min(92vw, 22rem);
+      white-space: normal;
+      text-align: center;
+      line-height: 1.4;
+      text-transform: none;
+      letter-spacing: 0.02em;
+      font-weight: 700;
+      font-size: clamp(0.72rem, 2.1vw, 0.88rem);
+      border-radius: 16px;
+      padding: 14px 18px;
+      color: #eaf6ff;
+      background: linear-gradient(145deg, rgba(22, 34, 48, 0.96) 0%, rgba(10, 16, 24, 0.98) 100%);
+      border: 1px solid rgba(94, 228, 212, 0.38);
+      box-shadow:
+        0 0 26px rgba(94, 228, 212, 0.18),
+        0 14px 44px rgba(0, 0, 0, 0.5);
+    }
+
+    .round-earn-toast--milestone-finale {
+      border-color: rgba(244, 208, 111, 0.5);
+      box-shadow:
+        0 0 32px rgba(244, 208, 111, 0.22),
+        0 14px 44px rgba(0, 0, 0, 0.5);
+    }
+
     .round-earn-toast.is-on {
       opacity: 1;
       transform: translate3d(-50%, 0, 0);
@@ -1948,6 +1974,16 @@
       /** Full sets cleared in this tab session (survives reload; cleared when tab closes). */
       const SESSION_SETS_CLEARED_KEY = "synonyms-session-sets-v1";
 
+      /** After completing N sets in the current endless run (persisted; resets on new shuffle / pool revision). */
+      const SET_MILESTONE_MESSAGES = {
+        10: "Double digits. Your brain has left the lobby.",
+        25: "Quarter-century of sets. The thesaurus is taking notes.",
+        50: "Half a hundred sets. Somewhere a dictionary just whispered “respect.”",
+        75: "Seventy-five sets deep — the word “quit” is looking for synonyms near you.",
+      };
+      const SET_MILESTONE_FINALE =
+        "the creator of this app couldn't believe anybody would persevere this far. He wants to buy you a drink.";
+
       function clampLifetimeScore() {
         var n = Number(lifetimeScore);
         if (!Number.isFinite(n)) n = 0;
@@ -1963,6 +1999,7 @@
       let blitzSetsLifetime = 0;
       let pureSetsLifetime = 0;
       let sessionSetsCleared = 0;
+      let endlessRunSetsCleared = 0;
 
       let roundIndex = 0;
 
@@ -2102,6 +2139,10 @@
             setHints: typeof o.setHints === "number" ? o.setHints : 0,
             blitzSets: typeof o.blitzSets === "number" ? o.blitzSets : 0,
             pureSets: typeof o.pureSets === "number" ? o.pureSets : 0,
+            endlessRunSetsCleared:
+              typeof o.endlessRunSetsCleared === "number" && Number.isFinite(o.endlessRunSetsCleared)
+                ? o.endlessRunSetsCleared
+                : null,
             poolRevision:
               typeof o.poolRevision === "string"
                 ? o.poolRevision
@@ -2125,6 +2166,7 @@
               setHints: hintsThisSet,
               blitzSets: blitzSetsLifetime,
               pureSets: pureSetsLifetime,
+              endlessRunSetsCleared: endlessRunSetsCleared,
               poolRevision: endlessPoolFingerprint,
             })
           );
@@ -2142,6 +2184,7 @@
             setHints: 0,
             blitzSets: 0,
             pureSets: 0,
+            endlessRunSetsCleared: 0,
             poolRevision: "",
           };
         }
@@ -2149,6 +2192,7 @@
           st.puzzleIndex = 0;
           st.poolRevision = fp;
           st.setHints = 0;
+          st.endlessRunSetsCleared = 0;
         }
         endlessSeed = GLOBAL_ENDLESS_SEED;
         st.seed = GLOBAL_ENDLESS_SEED;
@@ -2157,6 +2201,11 @@
         lifetimeScore = st.totalScore;
         clampLifetimeScore();
         roundIndex = Math.min(Math.max(0, st.puzzleIndex), endlessDeck.length);
+        if (st.endlessRunSetsCleared != null && Number.isFinite(st.endlessRunSetsCleared)) {
+          endlessRunSetsCleared = Math.max(0, Math.floor(st.endlessRunSetsCleared));
+        } else {
+          endlessRunSetsCleared = Math.floor(roundIndex / 5);
+        }
         hintsThisSet = typeof st.setHints === "number" ? st.setHints : 0;
         const loadedBlitz = typeof st.blitzSets === "number" ? st.blitzSets : 0;
         const loadedPure = typeof st.pureSets === "number" ? st.pureSets : 0;
@@ -2169,6 +2218,7 @@
       function startNewShuffleKeepScore() {
         endlessSeed = GLOBAL_ENDLESS_SEED;
         roundIndex = 0;
+        endlessRunSetsCleared = 0;
         endlessPoolFingerprint = getPoolFingerprint();
         endlessDeck = buildSetCycledDeck(GLOBAL_ENDLESS_SEED + "|fp=" + endlessPoolFingerprint);
         saveEndlessState();
@@ -2596,7 +2646,8 @@
         roundStartMs = performance.now();
       }
 
-      function spawnRoundAchievementToast(text, toastClass) {
+      function spawnRoundAchievementToast(text, toastClass, durationMs) {
+        if (durationMs == null) durationMs = 1750;
         const el = document.createElement("div");
         el.className = "round-earn-toast " + toastClass;
         el.setAttribute("aria-hidden", "true");
@@ -2612,7 +2663,22 @@
           setTimeout(function () {
             el.remove();
           }, 420);
-        }, 1750);
+        }, durationMs);
+      }
+
+      function checkEndlessSetMilestones(setsJustCompleted) {
+        var msg = SET_MILESTONE_MESSAGES[setsJustCompleted];
+        if (msg) {
+          spawnRoundAchievementToast(msg, "round-earn-toast--milestone", 3600);
+        }
+        var maxSets = totalSetsFromDeck(endlessDeck);
+        if (maxSets > 0 && setsJustCompleted === maxSets) {
+          spawnRoundAchievementToast(
+            SET_MILESTONE_FINALE,
+            "round-earn-toast--milestone round-earn-toast--milestone-finale",
+            8200
+          );
+        }
       }
 
       function buildWinModalBadgeHeroHtml(hasFast, hasClean) {
@@ -3070,6 +3136,8 @@
               "<br /><strong>Pure set!</strong> No hints this full set (&plus;" + SET_PURE_BONUS + " pts)";
           }
           bumpSessionSetsCleared();
+          endlessRunSetsCleared++;
+          checkEndlessSetMilestones(endlessRunSetsCleared);
           animateBadgeEarned(badgeStreakEl);
         }
 
