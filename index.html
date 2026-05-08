@@ -1925,7 +1925,7 @@
         return a;
       }
 
-      const ENDLESS_STORAGE_KEY = "synonyms-endless-v3";
+      const ENDLESS_STORAGE_KEY = "synonyms-endless-v4";
       /** Same for every player: deck order is shuffleSeeded(pools, this + pool fingerprint). Changing this string reshuffles everyone’s run. */
       const GLOBAL_ENDLESS_SEED = "synonyms-canonical-v1";
 
@@ -1978,6 +1978,11 @@
         return Math.floor(deck.length / 5);
       }
 
+      /**
+       * One puzzle from each level per set, every puzzle used once. Theme titles must not repeat
+       * within a set (levels reuse names like “Dirty” / “Throw” across pools — same index s used to
+       * line them up caused duplicate titles in one set).
+       */
       function buildSetCycledDeck(seedStr) {
         const pools = [LEVEL1_ROUNDS, LEVEL2_ROUNDS, LEVEL3_ROUNDS, LEVEL4_ROUNDS, LEVEL5_ROUNDS];
         const n = Math.min.apply(
@@ -1987,6 +1992,18 @@
           })
         );
         if (n <= 0) return [];
+        for (let attempt = 0; attempt < 48; attempt++) {
+          const attemptSeed = attempt ? seedStr + "|uniqAttempt=" + attempt : seedStr;
+          const deck = tryBuildUniqueThemeSetsDeck(attemptSeed, pools, n);
+          if (deck) return deck;
+        }
+        console.warn(
+          "[Synonyms] Could not assign 5 unique theme titles per set; falling back to index pairing."
+        );
+        return buildSetCycledDeckIndexPairing(seedStr, pools, n);
+      }
+
+      function buildSetCycledDeckIndexPairing(seedStr, pools, n) {
         const shuffledByLevel = pools.map(function (pool, idx) {
           return shuffleSeeded(pool.slice(0, n), seedStr + "-L" + (idx + 1));
         });
@@ -1995,6 +2012,44 @@
           for (let L = 0; L < 5; L++) {
             deck.push(shuffledByLevel[L][s]);
           }
+        }
+        return deck;
+      }
+
+      function tryBuildUniqueThemeSetsDeck(seedStr, pools, n) {
+        const shuffledByLevel = pools.map(function (pool, idx) {
+          return shuffleSeeded(pool.slice(0, n), seedStr + "-L" + (idx + 1));
+        });
+        const usedSlot = [new Set(), new Set(), new Set(), new Set(), new Set()];
+        const deck = [];
+        for (let setIdx = 0; setIdx < n; setIdx++) {
+          const chosen = [null, null, null, null, null];
+          const themesInSet = Object.create(null);
+          function dfs(lvl) {
+            if (lvl === 5) return true;
+            const slotOrder = shuffleSeeded(
+              Array.from({ length: n }, function (_, i) {
+                return i;
+              }),
+              seedStr + "-uniqSlots-set" + setIdx + "-lvl" + lvl
+            );
+            for (let si = 0; si < n; si++) {
+              const slot = slotOrder[si];
+              if (usedSlot[lvl].has(slot)) continue;
+              const t = shuffledByLevel[lvl][slot].theme;
+              if (themesInSet[t]) continue;
+              themesInSet[t] = true;
+              usedSlot[lvl].add(slot);
+              chosen[lvl] = shuffledByLevel[lvl][slot];
+              if (dfs(lvl + 1)) return true;
+              usedSlot[lvl].delete(slot);
+              delete themesInSet[t];
+              chosen[lvl] = null;
+            }
+            return false;
+          }
+          if (!dfs(0)) return null;
+          for (let L = 0; L < 5; L++) deck.push(chosen[L]);
         }
         return deck;
       }
