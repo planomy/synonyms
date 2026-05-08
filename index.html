@@ -1925,7 +1925,7 @@
         return a;
       }
 
-      const ENDLESS_STORAGE_KEY = "synonyms-endless-v4";
+      const ENDLESS_STORAGE_KEY = "synonyms-endless-v5";
       /** Same for every player: deck order is shuffleSeeded(pools, this + pool fingerprint). Changing this string reshuffles everyone’s run. */
       const GLOBAL_ENDLESS_SEED = "synonyms-canonical-v1";
 
@@ -1974,14 +1974,24 @@
           .join("-");
       }
 
+      /** Same multiset of answer words (order-independent) — ladders reuse identical lists across levels. */
+      function puzzleWordKey(words) {
+        return words
+          .map(function (w) {
+            return String(w).toUpperCase();
+          })
+          .sort()
+          .join("|");
+      }
+
       function totalSetsFromDeck(deck) {
         return Math.floor(deck.length / 5);
       }
 
       /**
-       * One puzzle from each level per set, every puzzle used once. Theme titles must not repeat
-       * within a set (levels reuse names like “Dirty” / “Throw” across pools — same index s used to
-       * line them up caused duplicate titles in one set).
+       * One puzzle per level per set; each slot used at most once per level. No two puzzles anywhere
+       * in the run may share the same multiset of answer words (content repeats across level JSON).
+       * Maximum length is limited by data (~79 sets); we pick the longest deck found across attempts.
        */
       function buildSetCycledDeck(seedStr) {
         const pools = [LEVEL1_ROUNDS, LEVEL2_ROUNDS, LEVEL3_ROUNDS, LEVEL4_ROUNDS, LEVEL5_ROUNDS];
@@ -1992,13 +2002,37 @@
           })
         );
         if (n <= 0) return [];
-        for (let attempt = 0; attempt < 48; attempt++) {
+        let bestDeck = null;
+        for (let attempt = 0; attempt < 64; attempt++) {
           const attemptSeed = attempt ? seedStr + "|uniqAttempt=" + attempt : seedStr;
-          const deck = tryBuildUniqueThemeSetsDeck(attemptSeed, pools, n);
-          if (deck) return deck;
+          let lo = 0;
+          let hi = n;
+          let candidate = null;
+          while (lo < hi) {
+            const mid = Math.ceil((lo + hi + 1) / 2);
+            const deckTry = tryBuildUniqueWordMultisetsDeck(attemptSeed, pools, n, mid);
+            if (deckTry) {
+              lo = mid;
+              candidate = deckTry;
+            } else hi = mid - 1;
+          }
+          if (candidate && (!bestDeck || candidate.length > bestDeck.length)) {
+            bestDeck = candidate;
+          }
+        }
+        if (bestDeck) {
+          const maxPossibleSets = n;
+          if (bestDeck.length < maxPossibleSets * 5) {
+            console.info(
+              "[Synonyms] Run length " +
+                Math.floor(bestDeck.length / 5) +
+                " sets: unique answer-word multisets only (full ladder would repeat identical puzzles)."
+            );
+          }
+          return bestDeck;
         }
         console.warn(
-          "[Synonyms] Could not assign 5 unique theme titles per set; falling back to index pairing."
+          "[Synonyms] Could not build a unique-word deck; falling back to index pairing (identical word lists may repeat)."
         );
         return buildSetCycledDeckIndexPairing(seedStr, pools, n);
       }
@@ -2016,34 +2050,35 @@
         return deck;
       }
 
-      function tryBuildUniqueThemeSetsDeck(seedStr, pools, n) {
+      function tryBuildUniqueWordMultisetsDeck(seedStr, pools, poolLen, numSets) {
         const shuffledByLevel = pools.map(function (pool, idx) {
-          return shuffleSeeded(pool.slice(0, n), seedStr + "-L" + (idx + 1));
+          return shuffleSeeded(pool.slice(0, poolLen), seedStr + "-L" + (idx + 1));
         });
         const usedSlot = [new Set(), new Set(), new Set(), new Set(), new Set()];
+        const usedWordKeys = Object.create(null);
         const deck = [];
-        for (let setIdx = 0; setIdx < n; setIdx++) {
+        for (let setIdx = 0; setIdx < numSets; setIdx++) {
           const chosen = [null, null, null, null, null];
-          const themesInSet = Object.create(null);
           function dfs(lvl) {
             if (lvl === 5) return true;
             const slotOrder = shuffleSeeded(
-              Array.from({ length: n }, function (_, i) {
+              Array.from({ length: poolLen }, function (_, i) {
                 return i;
               }),
               seedStr + "-uniqSlots-set" + setIdx + "-lvl" + lvl
             );
-            for (let si = 0; si < n; si++) {
+            for (let si = 0; si < poolLen; si++) {
               const slot = slotOrder[si];
               if (usedSlot[lvl].has(slot)) continue;
-              const t = shuffledByLevel[lvl][slot].theme;
-              if (themesInSet[t]) continue;
-              themesInSet[t] = true;
+              const round = shuffledByLevel[lvl][slot];
+              const wk = puzzleWordKey(round.words);
+              if (usedWordKeys[wk]) continue;
               usedSlot[lvl].add(slot);
-              chosen[lvl] = shuffledByLevel[lvl][slot];
+              usedWordKeys[wk] = true;
+              chosen[lvl] = round;
               if (dfs(lvl + 1)) return true;
               usedSlot[lvl].delete(slot);
-              delete themesInSet[t];
+              delete usedWordKeys[wk];
               chosen[lvl] = null;
             }
             return false;
