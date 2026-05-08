@@ -1026,21 +1026,6 @@
       color: transparent;
       line-height: 1.2;
       margin: 12px 0;
-      transition: transform 0.05s linear;
-    }
-
-    .modal .score-big.is-rolling {
-      animation: scoreRollTick 0.08s steps(2) infinite;
-    }
-
-    @keyframes scoreRollTick {
-      0%,
-      100% {
-        transform: translateY(0);
-      }
-      50% {
-        transform: translateY(-2px);
-      }
     }
 
     .modal p,
@@ -1953,15 +1938,20 @@
       const LEVEL_SPEED_CLEAN_COMBO_BONUS = 45;
       /** One-time bonus when a full five-puzzle set ends with zero hints (5th puzzle only). */
       const SET_PURE_BONUS = 140;
-      /** Running total never exceeds this (display + saves). */
-      const MAX_LIFETIME_SCORE = 10000;
+      /**
+       * Round score tuning (500 puzzles ≈ full endless run). Keeps per-round totals in the
+       * hundreds while a strong full clear lands in low six figures—not millions.
+       */
+      const SCORE_MOVE_PEAK = 145;
+      const SCORE_STREAK_PER_ROUND = 0.55;
+      const SCORE_ZERO_MOVE_BASE = 28;
       /** Full sets cleared in this tab session (survives reload; cleared when tab closes). */
       const SESSION_SETS_CLEARED_KEY = "synonyms-session-sets-v1";
 
       function clampLifetimeScore() {
         var n = Number(lifetimeScore);
         if (!Number.isFinite(n)) n = 0;
-        lifetimeScore = Math.min(Math.max(0, Math.round(n)), MAX_LIFETIME_SCORE);
+        lifetimeScore = Math.max(0, Math.round(n));
       }
 
       /** Full run: sets of 5 (Level 1→5), aligned across pools. */
@@ -2363,17 +2353,17 @@
       }
 
       /**
-       * Moves vs letter-count par, round streak, minus flat hint penalty.
-       * Tuned for smaller totals (roughly ~6× lower than the original curve).
+       * Moves vs letter-count par, mild round streak, minus flat hint penalty.
+       * Tuned so a near-perfect full run (~500 puzzles) stays in low six figures.
        */
       function computeScore(words, moveCount, hintPenalty) {
         const par = minMovesPar(words);
-        const streak = roundIndex * 20;
+        const streak = Math.round(roundIndex * SCORE_STREAK_PER_ROUND);
         if (moveCount <= 0) {
-          return Math.max(35, 120 + streak - hintPenalty);
+          return Math.max(35, SCORE_ZERO_MOVE_BASE + streak - hintPenalty);
         }
         const moveRatio = Math.min(1, par / moveCount);
-        const base = Math.round(680 * moveRatio * moveRatio);
+        const base = Math.round(SCORE_MOVE_PEAK * moveRatio * moveRatio);
         return Math.max(35, base + streak - hintPenalty);
       }
 
@@ -2384,7 +2374,6 @@
           Math.min(target - 1, Math.floor(target * 0.1 + 50 + Math.min(180, target * 0.2)))
         );
         const t0 = performance.now();
-        modalEl.classList.add("is-rolling");
         modalEl.textContent = String(from);
         function tick(now) {
           const u = Math.min(1, (now - t0) / durationMs);
@@ -2394,7 +2383,6 @@
             requestAnimationFrame(tick);
           } else {
             modalEl.textContent = String(target);
-            modalEl.classList.remove("is-rolling");
             if (onDone) onDone();
           }
         }
@@ -2406,7 +2394,6 @@
         const from = Math.round(fromVal);
         const to = Math.round(toVal);
         const t0 = performance.now();
-        modalEl.classList.add("is-rolling");
         modalEl.textContent = String(from);
         function tick(now) {
           const u = Math.min(1, (now - t0) / durationMs);
@@ -2416,7 +2403,6 @@
             requestAnimationFrame(tick);
           } else {
             modalEl.textContent = String(to);
-            modalEl.classList.remove("is-rolling");
             if (onDone) onDone();
           }
         }
